@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -18,8 +19,7 @@ const ForgotPassword: React.FC = () => {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to send email');
-      alert(data.message);
-      navigate('/login');
+      setShowSuccess(true);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -28,8 +28,9 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="w-full max-w-md bg-white p-8 rounded shadow">
+    <div className="min-h-screen flex items-center justify-center bg-white relative">
+      {/* Background blur if modal is open */}
+      <div className={`${showSuccess ? 'blur-sm pointer-events-none' : ''} transition-all w-full max-w-md bg-white p-8 rounded shadow z-0`}>
         <h2 className="text-2xl font-bold mb-4 text-center">Forgot Password</h2>
         <form onSubmit={handleSubmit}>
           <input
@@ -49,6 +50,25 @@ const ForgotPassword: React.FC = () => {
           </button>
         </form>
       </div>
+
+      {/* Success Modal */}
+      {showSuccess && (
+        <div className="absolute z-10 inset-0 flex items-center justify-center">
+          <div className="bg-white shadow-lg rounded-lg p-6 w-80 text-center">
+            <h3 className="text-xl font-semibold mb-2 text-purple-800">Link Sent!</h3>
+            <p className="text-sm mb-4 text-gray-600">Please check your email for the password reset link.</p>
+            <button
+              onClick={() => {
+                setShowSuccess(false);
+                navigate('/login');
+              }}
+              className="bg-purple-700 text-white px-4 py-2 rounded hover:bg-purple-800"
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../provider/AuthProvider';
-import { useAppContext } from '../provider/AppContext';
-import { toast } from 'react-toastify';
-import { LoginAssets } from '../assets/icons/login/login'; 
+import { AppContext } from '../provider/AppContext';
+import { LoginAssets } from '../assets/icons/login/login';
 
 const Login = () => {
   const navigate = useNavigate();
   const { setToken } = useAuth();
-  const { backendUrl, setIsLoggedIn } = useAppContext();
-
+  const { backendUrl, setIsLoggedIn } = React.useContext(AppContext);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [hover, setHover] = useState(false);
+
+  //  Added forgot password modal states
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMsg, setForgotMsg] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,16 +32,16 @@ const Login = () => {
 
       setToken(data.token);
       setIsLoggedIn(true);
-      toast.success('Login successful');
       navigate(`/dashboard/${data.role}`);
     } catch (err: any) {
-      toast.error(err.message);
+      alert(err.message);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-white px-4">
-      <div className="flex drop-shadow-[0_10px_15px_rgba(139,92,246,0.4)] rounded-xl overflow-hidden">
+    <div className="flex items-center justify-center min-h-screen bg-white px-4 relative">
+      {/* Login Form */}
+      <div className={`flex rounded-xl overflow-hidden shadow-[0px_0px_35px_rgba(138,31,231,0.4)] ${showForgotModal ? 'blur-sm pointer-events-none' : ''}`}>
 
         {/* Left form section */}
         <div className="bg-white p-10 w-96">
@@ -72,14 +75,14 @@ const Login = () => {
 
             <p
               className="text-sm text-blue-600 text-right mb-4 cursor-pointer"
-              onClick={() => navigate('/forgot-password')}
+              onClick={() => setShowForgotModal(true)}
             >
               Forgot password?
             </p>
 
             <button
               type="submit"
-              className={`w-full py-2 rounded-full text-white text-xl bg-gradient-to-b from-purple-600 to-purple-900 shadow-md transition duration-300 hover:shadow-lg`}
+              className="w-full py-2 rounded-full text-white text-xl bg-gradient-to-b from-purple-600 to-purple-900 shadow-md transition duration-300 hover:shadow-lg"
               onMouseEnter={() => setHover(true)}
               onMouseLeave={() => setHover(false)}
             >
@@ -105,9 +108,60 @@ const Login = () => {
           <p className="text-sm">தேர்தல் ஆணைக்குழு</p>
           <p className="text-sm mb-2">Election Commission</p>
           <h2 className="text-xl font-bold">Welcome</h2>
-          <p className="text-center text-sm mt-1">Election Commission<br />Issue Management System</p>
+          <p className="text-center text-sm mt-1">Issue Management System</p>
         </div>
       </div>
+
+      {/*  Forgot Password Modal Overlay */}
+      {showForgotModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-80">
+            <h3 className="text-lg font-semibold text-purple-700 mb-2">Reset Password</h3>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  const res = await fetch(`${backendUrl}/auth/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: forgotEmail }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.message);
+                  setForgotMsg('Check your inbox for the reset link.');
+                } catch (err: any) {
+                  setForgotMsg(err.message || 'Failed to send reset email.');
+                }
+              }}
+            >
+              <input
+                type="email"
+                placeholder="Enter your email"
+                className="w-full p-2 mb-3 border rounded"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                required
+              />
+              <button
+                type="submit"
+                className="w-full bg-purple-700 text-white py-2 rounded mb-2"
+              >
+                Send Reset Link
+              </button>
+              {forgotMsg && <p className="text-sm text-green-600">{forgotMsg}</p>}
+            </form>
+            <button
+              className="text-sm text-blue-600 hover:underline mt-3"
+              onClick={() => {
+                setShowForgotModal(false);
+                setForgotMsg('');
+              }}
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

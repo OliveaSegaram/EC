@@ -10,6 +10,8 @@ app.use(express.json());
 
 
 const db = require('./models'); 
+const seedRootUser = require('./seeders/seedRootUser');
+seedRootUser();
 
 
 db.sequelize.authenticate()
