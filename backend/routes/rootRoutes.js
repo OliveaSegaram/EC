@@ -1,3 +1,5 @@
+// rootRoutes.js (✅ your single route file for all root functions)
+
 const express = require('express');
 const router = express.Router();
 const rootController = require('../controllers/rootController');
@@ -11,10 +13,14 @@ const onlyRoot = (req, res, next) => {
   next();
 };
 
-// Get all users (with optional filtering on frontend)
+// existing routes
 router.get('/pending-users', auth, onlyRoot, rootController.getAllUsers);
-
-// Verify or decline registration via email links
 router.get('/verify/:id', rootController.verifyUser);
+router.get('/users', auth, onlyRoot, rootController.getAllUsers);
+router.delete('/user/:id', auth, onlyRoot, rootController.deleteUser);
+
+// ✅ NEW: Role routes directly here
+router.get('/roles', auth, onlyRoot, rootController.getAllRoles);
+router.post('/roles', auth, onlyRoot, rootController.addRole);
 
 module.exports = router;

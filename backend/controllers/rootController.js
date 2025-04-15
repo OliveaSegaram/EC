@@ -1,7 +1,8 @@
 const { User, Role } = require('../models');
 const sendEmail = require('../utils/sendEmail');
 
-exports.getAllUsers = async (req, res) => {
+// GET all users
+const getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll({
       include: Role,
@@ -14,7 +15,8 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-exports.verifyUser = async (req, res) => {
+// VERIFY user via link
+const verifyUser = async (req, res) => {
   const { id } = req.params;
   const { action } = req.query;
 
@@ -32,7 +34,7 @@ exports.verifyUser = async (req, res) => {
         html: `<p>Your registration as ${user.Role.name} is approved. You can now login.</p>`
       });
 
-      return res.send(" User approved and notified.");
+      return res.send("User approved and notified.");
     }
 
     if (action === 'decline') {
@@ -43,7 +45,7 @@ exports.verifyUser = async (req, res) => {
       });
 
       await user.destroy();
-      return res.send(" User declined and removed.");
+      return res.send("User declined and removed.");
     }
 
     res.status(400).json({ message: 'Invalid action' });
@@ -51,4 +53,47 @@ exports.verifyUser = async (req, res) => {
     console.error(err);
     res.status(500).json({ message: 'Verification error' });
   }
+};
+
+// DELETE user
+const deleteUser = async (req, res) => {
+  try {
+    await User.destroy({ where: { id: req.params.id } });
+    res.json({ message: 'User deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete user' });
+  }
+};
+
+// GET all roles
+const getAllRoles = async (_req, res) => {
+  try {
+    const roles = await Role.findAll();
+    res.json(roles);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch roles' });
+  }
+};
+
+// ADD new role
+const addRole = async (req, res) => {
+  const { name } = req.body;
+  try {
+    const existing = await Role.findOne({ where: { name } });
+    if (existing) return res.status(400).json({ message: 'Role already exists' });
+
+    const role = await Role.create({ name });
+    res.status(201).json(role);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to add role' });
+  }
+};
+
+//  Export all handlers
+module.exports = {
+  getAllUsers,
+  verifyUser,
+  deleteUser,
+  getAllRoles,
+  addRole
 };
