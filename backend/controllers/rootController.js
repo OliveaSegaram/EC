@@ -89,11 +89,32 @@ const addRole = async (req, res) => {
   }
 };
 
+// ADD this above the export block
+const deleteRole = async (req, res) => {
+  try {
+    const roleId = req.params.id;
+
+    const usersWithRole = await User.findAll({ where: { roleId } });
+    if (usersWithRole.length > 0) {
+      return res.status(400).json({ message: 'Cannot delete role in use by users' });
+    }
+
+    await Role.destroy({ where: { id: roleId } });
+    res.json({ message: 'Role deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete role' });
+  }
+};
+
+
+
 //  Export all handlers
 module.exports = {
   getAllUsers,
   verifyUser,
   deleteUser,
   getAllRoles,
-  addRole
+  addRole,
+  deleteRole
 };

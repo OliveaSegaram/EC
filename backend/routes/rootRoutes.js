@@ -19,8 +19,9 @@ router.get('/verify/:id', rootController.verifyUser);
 router.get('/users', auth, onlyRoot, rootController.getAllUsers);
 router.delete('/user/:id', auth, onlyRoot, rootController.deleteUser);
 
-// ✅ NEW: Role routes directly here
+//  NEW: Role routes directly here
 router.get('/roles', auth, onlyRoot, rootController.getAllRoles);
 router.post('/roles', auth, onlyRoot, rootController.addRole);
+router.delete('/roles/:id', auth, onlyRoot, rootController.deleteRole);
 
 module.exports = router;

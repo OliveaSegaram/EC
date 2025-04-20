@@ -1,41 +1,52 @@
-// src/pages/dashboards/components/RolesTab.tsx
 import React, { useEffect, useState } from 'react';
+import { FaTrash } from 'react-icons/fa';
+import { useAppContext } from '../../provider/AppContext';
 
-const RolesTab: React.FC = () => {
+const RolePanel: React.FC = () => {
+  const { backendUrl } = useAppContext();
   const [roles, setRoles] = useState<any[]>([]);
   const [newRole, setNewRole] = useState('');
 
   const fetchRoles = async () => {
-    try {
-      const res = await fetch('http://localhost:5000/api/root/roles', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await res.json();
-      setRoles(data);
-    } catch (err) {
-      console.error(err);
+    const res = await fetch(`${backendUrl}/root/roles`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+    const data = await res.json();
+    setRoles(data);
+  };
+
+  const handleAdd = async () => {
+    if (!newRole.trim()) return;
+
+    const res = await fetch(`${backendUrl}/root/roles`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ name: newRole }),
+    });
+
+    if (res.ok) {
+      setNewRole('');
+      fetchRoles();
     }
   };
 
-  const handleAddRole = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('http://localhost:5000/api/root/roles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ name: newRole })
-      });
+  const handleDelete = async (id: number) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this role?");
+    if (!confirmDelete) return;
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setNewRole('');
-      fetchRoles();
-    } catch (err: any) {
-      alert(err.message || 'Failed to add role');
-    }
+    await fetch(`${backendUrl}/root/roles/${id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+
+    fetchRoles();
   };
 
   useEffect(() => {
@@ -43,30 +54,44 @@ const RolesTab: React.FC = () => {
   }, []);
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Manage Roles</h2>
+    <div className="p-6 bg-gray-50 rounded-lg shadow-sm">
+      <h2 className="text-xl font-semibold mb-4 border-b pb-2 text-gray-800">Manage Roles</h2>
 
-      <form onSubmit={handleAddRole} className="flex gap-2 mb-6">
+      <div className="flex items-center gap-3 mb-6">
         <input
           type="text"
-          placeholder="New Role"
           value={newRole}
           onChange={(e) => setNewRole(e.target.value)}
-          className="border p-2 rounded w-60"
-          required
+          placeholder="Enter new role name"
+          className="px-4 py-2 border rounded-md w-72 focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
-        <button type="submit" className="bg-purple-700 text-white px-4 py-2 rounded">
-          Add Role
+        <button
+          onClick={handleAdd}
+          className="px-5 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition duration-200"
+        >
+          Add
         </button>
-      </form>
+      </div>
 
-      <ul className="bg-white p-4 rounded shadow space-y-2">
+      <ul className="space-y-3">
         {roles.map((role) => (
-          <li key={role.id} className="border-b py-1">{role.name}</li>
+          <li
+            key={role.id}
+            className="flex justify-between items-center px-4 py-2 bg-white rounded shadow border hover:shadow-md transition-all"
+          >
+            <span className="text-gray-700 font-medium capitalize">{role.name}</span>
+            <button
+              onClick={() => handleDelete(role.id)}
+              className="text-red-600 hover:text-red-800 transition duration-150"
+              title="Delete"
+            >
+              <FaTrash />
+            </button>
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default RolesTab;
+export default RolePanel;

@@ -8,28 +8,30 @@ import ResetPassword from '../pages/ResetPassword';
 
 import RootDashboard from '../pages/dashboards/RootDashboard';
 import ClerkDashboard from '../pages/dashboards/ClerkDashboard';
-//import SuperUserDashboard from '../pages/dashboards/SuperUserDashboard';
-//import TechnicalOfficerDashboard from '../pages/dashboards/TechnicalOfficerDashboard';
-//import DcDashboard from '../pages/dashboards/DcDashboard';
+// import other dashboards as needed
 
-// Dynamic dashboard loader
+// Role-based loader – no SidebarLayout here
 const DashboardLoader = ({ role }: { role: string }) => {
   switch (role) {
     case 'root':
-      return <RootDashboard />;
+      return <RootDashboard />; // Already includes SidebarLayout
     case 'subject_clerk':
-      return <ClerkDashboard />;
-    /*case 'super_user':
-      return <SuperUserDashboard />;
-    case 'technical_officer':
-      return <TechnicalOfficerDashboard />;
-    case 'dc':
-      return <DcDashboard />;*/
+      return <ClerkDashboard />; // Should include its own SidebarLayout
+    // case 'super_user': return <SuperUserDashboard />;
+    // case 'technical_officer': return <TechnicalOfficerDashboard />;
+    // case 'dc': return <DcDashboard />;
     default:
-      return <div className="p-6"> Unauthorized role</div>;
+      return <div className="p-6">Unauthorized role</div>;
   }
 };
 
+// Wrapper to extract role from URL
+const RoleBasedDashboard = () => {
+  const { role } = useParams();
+  return <DashboardLoader role={role || ''} />;
+};
+
+// Routes definition
 export const AppRouter = () => {
   return (
     <Routes>
@@ -37,8 +39,8 @@ export const AppRouter = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
-
-      {/* Dynamic dashboard route based on role param */}
+      
+      {/* Protected route for dashboards */}
       <Route
         path="/dashboard/:role"
         element={
@@ -48,13 +50,8 @@ export const AppRouter = () => {
         }
       />
 
+      {/* Fallback */}
       <Route path="*" element={<Login />} />
     </Routes>
   );
-};
-
-// Extract role from URL and load corresponding dashboard
-const RoleBasedDashboard = () => {
-  const { role } = useParams();
-  return <DashboardLoader role={role || ''} />;
 };
