@@ -86,7 +86,7 @@ const RolePanel: React.FC = (): JSX.Element => {
               className="text-red-600 hover:text-red-800 transition duration-150"
               title="Delete"
             >
-              <FaTrash /> {/* This is the FaTrash icon */}
+              <FaTrash /> 
             </button>
           </li>
         ))}
