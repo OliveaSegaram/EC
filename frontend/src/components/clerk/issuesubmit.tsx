@@ -8,7 +8,7 @@ const IssueSubmit = () => {
     description: string;
     priorityLevel: string;
     location: string;
-    username: string;
+    //username: string;
     attachment: File | null;
     underWarranty: boolean;
   }>({
@@ -17,12 +17,12 @@ const IssueSubmit = () => {
     description: '',
     priorityLevel: '',
     location: '',
-    username: '',
+    //username: '',
     attachment: null,
     underWarranty: false,
   });
 
-  // Correct event typing
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setIssue((prev) => ({
@@ -49,16 +49,16 @@ const IssueSubmit = () => {
     form.append('description', issue.description);
     form.append('priorityLevel', issue.priorityLevel);
     form.append('location', issue.location);
-    form.append('username', issue.username);
+    //form.append('username', issue.username);
     form.append('underWarranty', issue.underWarranty.toString()); 
   
     // Append the file (if it exists)
-    //if (issue.attachment) {
-      //form.append('attachment', issue.attachment);
-    //}
+    if (issue.attachment) {
+      form.append('attachment', issue.attachment);
+    }
   
     try {
-       //Make the POST request to the backend
+       
       const response = await axios.post('http://localhost:5000/api/issues/submit', form, {
         headers: {
           'Content-Type': 'multipart/form-data', 
@@ -67,7 +67,7 @@ const IssueSubmit = () => {
   
       alert('Issue submitted successfully');
     } catch (error) {
-      // Print the error response if available
+     
       if (axios.isAxiosError(error)) {
         console.error('Error submitting issue:', error.response ? error.response.data : error.message);
       } else {
@@ -79,31 +79,33 @@ const IssueSubmit = () => {
   
 
   return (
-    <div className="max-w-xl mx-auto p-6 bg-white rounded-lg shadow-lg border-t-4">
-      <h2 className="text-2xl font-semibold text-gray-800 text-center mb-6">Computer Repair Form</h2>
+    <div className="max-w-xl mx-auto p-6 bg-white rounded-lg shadow-lg border-1-4 border-gray-300 mt-10 mb-10">
+      <h2 className="text-2xl font-semibold text-gray-800 text-center mb-6">Issue Form</h2>
       <form onSubmit={handleSubmit}>
         {/* Device ID with Scan QR Button */}
-        <div className="mb-4 flex items-center">
-          <div className="w-full">
-            <label htmlFor="deviceId" className="block text-gray-700 font-semibold mb-2">Device ID</label>
-            <input
-              type="text"
-              id="deviceId"
-              name="deviceId"
-              value={issue.deviceId}
-              onChange={handleChange}
-              required
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            />
-          </div>
-          <button
-            type="button"
-            className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            onClick={() => alert('QR Scan feature is not implemented yet!')}
-          >
-            Scan QR
-          </button>
-        </div>
+        <div className="flex items-end gap-2">
+  <div className="flex-1">
+    <label htmlFor="deviceId" className="block text-gray-700 font-semibold mb-2">Device ID</label>
+    <input
+      type="text"
+      id="deviceId"
+      name="deviceId"
+      value={issue.deviceId}
+      onChange={handleChange}
+      required
+      className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+    />
+  </div>
+
+  <button
+    type="button"
+    className="h-10 mt-6 px-3 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600"
+    onClick={() => alert('not implemented')}
+  >
+    Scan QR
+  </button>
+</div>
+
 
         {/* Complaint Type */}
         <div className="mb-4">
@@ -203,7 +205,7 @@ const IssueSubmit = () => {
             onChange={(e) => setIssue({ ...issue, underWarranty: e.target.checked })}
             className="w-4 h-4"
           />
-          <label htmlFor="underWarranty" className="text-gray-700 font-semibold ml-2">
+          <label htmlFor="underWarranty" className="text-gray-500  ml-2">
             Under Warranty
           </label>
         </div>
@@ -212,9 +214,9 @@ const IssueSubmit = () => {
         <div className="flex justify-center">
           <button
             type="submit"
-            className="w-1/4 py-2 rounded-full text-sm text-white bg-gradient-to-b from-purple-600 to-purple-900 shadow-md transition duration-300 hover:shadow-lg"
-          >
-            Submit Form
+            className="mt-3 py-2 px-3 bg-gradient-to-b from-purple-600 to-purple-900 text-white rounded-md hover:bg-gray-700"
+            >
+            Submit 
           </button>
         </div>
       </form>

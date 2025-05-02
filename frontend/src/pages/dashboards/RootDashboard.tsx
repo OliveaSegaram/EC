@@ -1,4 +1,3 @@
-// src/pages/dashboards/RootDashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiUsers, FiAlertCircle, FiShield, FiLogOut, FiBell } from 'react-icons/fi';
@@ -41,9 +40,11 @@ const RootDashboard = () => {
         <div className="flex items-center space-x-4 ml-auto">
           <FiBell className="text-gray-700 cursor-pointer" size={20} />
           <span className="text-gray-700 text-sm">Super Admin</span>
+          
+          {/* User Avatar */}
           <img
-            src="/assets/icons/login/User.png"
-
+           
+            src="/User.svg"  
             alt="User Avatar"
             className="rounded-full w-8 h-8"
           />

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FiUsers, FiClipboard, FiClock, FiCheckCircle, FiAlertCircle, FiLogOut, FiBell, FiPlus } from 'react-icons/fi';
+import { FiUsers, FiClipboard, FiClock, FiCheckCircle, FiAlertCircle, FiLogOut, FiBell, FiPlus, FiHome, FiEdit, FiTrash2 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '../../provider/AppContext';
 import IssueSubmit from '../../components/clerk/issuesubmit';
+import axios from 'axios';
 
 const ClerkDashboard = () => {
   const navigate = useNavigate();
@@ -16,14 +17,40 @@ const ClerkDashboard = () => {
     processing: 3,
     completed: 5,
   });
-  const [showIssueSubmit, setShowIssueSubmit] = useState(false); // State to show IssueSubmit form
+  const [showIssueSubmit, setShowIssueSubmit] = useState(false); 
+
+  interface Issue {
+    id: string;
+    deviceId: string;
+    complaintType: string;
+    description: string;
+    priorityLevel: string;
+    location: string;
+    status: string;
+  }
+
+  const [issues, setIssues] = useState<Issue[]>([]); 
 
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
     if (['Home', 'Check Status', 'Reports'].includes(hash)) {
       setActiveTab(hash as typeof activeTab);
     }
+
+    // Fetch recent issues 
+    fetchIssues();
   }, [window.location.hash]);
+
+  const fetchIssues = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/issues'); 
+      console.log('Fetched issues from backend:', response.data.issues); 
+      setIssues(response.data.issues); 
+    } catch (error) {
+      console.error('Error fetching issues:', error);
+    }
+  };
+  
 
   const handleTabClick = (tabKey: string) => {
     navigate(`${location.pathname}#${tabKey}`);
@@ -41,6 +68,22 @@ const ClerkDashboard = () => {
 
   const handleBackToOverview = () => {
     setShowIssueSubmit(false); 
+  };
+
+  const handleEditIssue = (issueId: string) => {
+  
+    console.log('Edit issue with ID:', issueId);
+  };
+
+  const handleDeleteIssue = async (id: string) => {
+    try {
+      await axios.delete(`/api/issues/${id}`);
+      fetchIssues();
+      alert('Issue deleted successfully');
+    } catch (error) {
+      console.error('Error deleting issue:', error);
+      alert('Error deleting issue');
+    }
   };
 
   return (
@@ -70,7 +113,7 @@ const ClerkDashboard = () => {
                   activeTab === 'Home' ? 'bg-purple-100 text-purple-700 font-semibold' : 'hover:bg-purple-200 text-gray-700'
                 }`}
               >
-                <FiUsers className="mr-2" size={20} /> Home
+                <FiHome className="mr-2" size={20} /> Home 
               </button>
 
               <button
@@ -112,41 +155,74 @@ const ClerkDashboard = () => {
               {/* Overview Section */}
               {activeTab === 'Home' && (
                 <div>
-                  <h2 className="text-2xl font-bold mb-6 text-gray-700">Overview</h2>
+                  <h2 className="text-3xl font-bold mb-6 text-gray-700">Overview</h2>
                   <div className="grid grid-cols-4 gap-6 mb-8">
                     {/* Total Forms Card */}
-                    <div className="bg-white shadow-xl p-6 rounded-lg text-center hover:shadow-2xl transition-all">
+                    <div className="bg-gradient-to-b from-purple-50 to-purple-100 shadow-xl p-6 rounded-lg text-center hover:shadow-2xl transition-all">
                       <FiClipboard size={20} className="text-purple-700 mb-3 mx-auto" />
                       <h3 className="text-lg font-semibold text-gray-800">Total Forms</h3>
                       <p className="text-s font-bold text-gray-900">{overviewStats.totalForms}</p>
                     </div>
 
                     {/* Pending Forms Card */}
-                    <div className="bg-white shadow-xl p-6 rounded-lg text-center hover:shadow-2xl transition-all">
+                    <div className="bg-gradient-to-b from-purple-50 to-purple-100 shadow-xl p-6 rounded-lg text-center hover:shadow-2xl transition-all">
                       <FiClock size={20} className="text-yellow-500 mb-3 mx-auto" />
                       <h3 className="text-lg font-semibold text-gray-800">Pending</h3>
                       <p className="text-s font-bold text-gray-900">{overviewStats.pending}</p>
                     </div>
 
                     {/* Processing Forms Card */}
-                    <div className="bg-white shadow-xl p-6 rounded-lg text-center hover:shadow-2xl transition-all">
+                    <div className="bg-gradient-to-b from-purple-50 to-purple-100 shadow-xl p-6 rounded-lg text-center hover:shadow-2xl transition-all">
                       <FiAlertCircle size={20} className="text-blue-500 mb-3 mx-auto" />
                       <h3 className="text-lg font-semibold text-gray-800">Processing</h3>
                       <p className="text-s font-bold text-gray-900">{overviewStats.processing}</p>
                     </div>
 
                     {/* Completed Forms Card */}
-                    <div className="bg-white shadow-xl p-6 rounded-lg text-center hover:shadow-2xl transition-all">
+                    <div className="bg-gradient-to-b from-purple-50 to-purple-100 shadow-xl p-6 rounded-lg text-center hover:shadow-2xl transition-all">
                       <FiCheckCircle size={20} className="text-green-500 mb-3 mx-auto" />
                       <h3 className="text-lg font-semibold text-gray-800">Completed</h3>
                       <p className="text-s font-bold text-gray-900">{overviewStats.completed}</p>
                     </div>
                   </div>
 
+                  {/* Recent Issues List */}
+                  <h2 className="text-2xl font-semibold text-gray-700 mb-4">Recent Issues</h2>
+                  <div className="space-y-4">
+                    {issues.map((issue) => (
+                      <div key={issue.id} className="bg-white  shadow-xl p-4 rounded-lg flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold text-gray-800">Device ID:{issue.deviceId}</p>
+                          <p className="text-sm text-gray-500">ComplaintTYpe:{issue.complaintType}</p>
+                          <p className="text-sm text-gray-500">Description:{issue.description}</p>
+                          <p className="text-sm text-gray-500">Priority: {issue.priorityLevel}</p>
+                          <p className="text-sm text-gray-500">Location: {issue.location}</p>
+                          <p className="text-sm text-gray-500">Status: {issue.status}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEditIssue(issue.id)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <FiEdit className="text-purple-500" size={20} />
+                          </button>
+
+
+                          <button
+                            onClick={() => handleDeleteIssue(issue.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <FiTrash2 size={20} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
                   {/* Add New Issue Button */}
                   <button
                     onClick={handleAddNewIssueClick}
-                    className="bg-purple-700 text-white px-8 py-4 rounded-md flex items-center text-lg hover:bg-purple-800 transition-all shadow-lg"
+                    className="absolute top-24 right-6 bg-gradient-to-b from-purple-600 to-purple-900 text-white px-4 py-2 rounded-md flex items-center text-m hover:bg-purple-800 transition-all shadow-lg"
                   >
                     <FiPlus className="mr-2" size={20} /> Add New Issue
                   </button>
@@ -156,11 +232,11 @@ const ClerkDashboard = () => {
           ) : (
             // Show IssueSubmit Form
             <>
-              <h2 className="text-2xl font-bold mb-6 text-gray-700">Submit New Issue</h2>
+              <h2 className="text-2xl font-bold mb-6 text-gray-700"></h2>
               <IssueSubmit />
               <button
                 onClick={handleBackToOverview}
-                className="mt-4 py-2 px-4 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                className="mt-3 py-2 px-3 bg-gradient-to-b from-purple-600 to-purple-900 text-white rounded-md hover:bg-gray-700"
               >
                 Back to Overview
               </button>
