@@ -1,7 +1,6 @@
-// models/issue.js
 module.exports = (sequelize, DataTypes) => {
   const Issue = sequelize.define('Issue', {
-    deviceId: { // Device ID field
+    deviceId: { 
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -21,10 +20,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
     },
     location: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    username: {
       type: DataTypes.STRING,
       allowNull: false,
     },

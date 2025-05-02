@@ -9,7 +9,8 @@ const seedRootUser = async () => {
     const rootUser = await User.findOne({ where: { roleId: rootRole.id } });
     if (rootUser) return console.log(' Root user already exists.');
 
-    const hashedPassword = await bcrypt.hash('Root@123', 10);
+    const hashedPassword = await bcrypt.hash(process.env.ROOT_PASSWORD, 10);
+
     await User.create({
       username: 'rootadmin',
       email: process.env.ROOT_EMAIL,
