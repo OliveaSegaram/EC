@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { CiWallet } from 'react-icons/ci';
 
 const RegistrationPanel: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -28,6 +29,7 @@ const RegistrationPanel: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded shadow border-l-4 border-blue-500">
           <h4 className="font-bold text-gray-700">Total Registrations</h4>
+          <CiWallet className="text-gray-700 cursor-pointer" size={20}/>
           <p className="text-2xl">{total}</p>
         </div>
         <div className="bg-white p-4 rounded shadow border-l-4 border-green-500">

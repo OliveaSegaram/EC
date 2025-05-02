@@ -4,6 +4,7 @@ import { FiUsers, FiAlertCircle, FiShield, FiLogOut, FiBell } from 'react-icons/
 import RegistrationPanel from '../../components/root/RegistrationPanel';
 import IssuePanel from '../../components/root/IssuePanel';
 import RolePanel from '../../components/root/RolePanel';
+import userAvatar from '../../assets/icons/login/User.svg'; 
 
 const RootDashboard = () => {
   const [activeTab, setActiveTab] = useState<'registration' | 'issues' | 'roles'>('registration');
@@ -36,17 +37,19 @@ const RootDashboard = () => {
     <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Top Navbar */}
       <div className="bg-white shadow-md fixed top-0 left-0 w-full z-10 p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-purple-700 ">Issue Tracker</h1>
+      <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">
+           Issue Tracker
+      </h1>
+
         <div className="flex items-center space-x-4 ml-auto">
           <FiBell className="text-gray-700 cursor-pointer" size={20} />
           <span className="text-gray-700 text-sm">Super Admin</span>
           
           {/* User Avatar */}
           <img
-           
-            src="/User.svg"  
+            src={userAvatar} 
             alt="User Avatar"
-            className="rounded-full w-8 h-8"
+            className="rounded-full w-10 h-10"
           />
         </div>
       </div>

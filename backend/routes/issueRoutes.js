@@ -22,6 +22,7 @@ router.get('/:id', getIssueDetails);
 router.patch('/:id', updateIssue);  
 
 // Route for deleting an issue
-router.delete('/:id', deleteIssue);  
+router.delete('/:id', deleteIssue); 
+
 
 module.exports = router;

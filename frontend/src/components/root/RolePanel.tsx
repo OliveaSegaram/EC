@@ -68,7 +68,7 @@ const RolePanel: React.FC = (): JSX.Element => {
         />
         <button
           onClick={handleAdd}
-          className="px-5 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition duration-200"
+          className="px-5 py-2 bg-gradient-to-b from-purple-600 to-purple-900 text-white rounded-md hover:bg-purple-700 transition duration-200"
         >
           Add
         </button>
