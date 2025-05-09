@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiAlertCircle, FiLogOut, FiBell, FiPlus, FiArrowLeft, FiMapPin } from 'react-icons/fi';
+import { FiHome, FiAlertCircle, FiLogOut, FiBell, FiMapPin, FiCheckCircle, FiXCircle } from 'react-icons/fi';
 import axios from 'axios';
 import userAvatar from '../../assets/icons/login/User.svg';
-import IssueSubmit from '../../components/clerk/issuesubmit';
 
 interface Issue {
   id: number;
@@ -18,14 +17,13 @@ interface Issue {
   underWarranty: boolean;
 }
 
-const ClerkDashboard = () => {
+const DCDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'overview' | 'issues'>('overview');
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
 
   useEffect(() => {
     fetchIssues();
@@ -53,6 +51,42 @@ const ClerkDashboard = () => {
     }
   };
 
+  const handleApproveIssue = async (issueId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+      await axios.post(`http://localhost:5000/api/issues/${issueId}/approve/dc`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchIssues();
+      alert('Issue approved successfully');
+    } catch (error) {
+      console.error('Error approving issue:', error);
+      alert('Error approving issue');
+    }
+  };
+
+  const handleRejectIssue = async (issueId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+      await axios.post(`http://localhost:5000/api/issues/${issueId}/reject/dc`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchIssues();
+      alert('Issue rejected successfully');
+    } catch (error) {
+      console.error('Error rejecting issue:', error);
+      alert('Error rejecting issue');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
@@ -64,8 +98,8 @@ const ClerkDashboard = () => {
         return 'bg-yellow-100 text-yellow-800';
       case 'DC Approved':
         return 'bg-blue-100 text-blue-800';
-      case 'Super User Approved':
-        return 'bg-green-100 text-green-800';
+      //case 'Super User Approved':
+        //return 'bg-green-100 text-green-800';
       case 'Super Admin Approved':
         return 'bg-purple-100 text-purple-800';
       default:
@@ -120,7 +154,7 @@ const ClerkDashboard = () => {
         </nav>
         {/* Sidebar Footer */}
         <div className="mt-auto px-4 py-4 border-t flex justify-between items-center">
-          <span className="text-gray-500 text-sm">Subject Clerk</span>
+          <span className="text-gray-500 text-sm">DC</span>
           <button
             onClick={handleLogout}
             title="Logout"
@@ -135,11 +169,11 @@ const ClerkDashboard = () => {
       <div className="fixed top-4 left-60 right-4 bg-white shadow-lg z-10 py-3 px-6 rounded-xl">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">
-            Subject Clerk Dashboard
+            DC Dashboard
           </h1>
           <div className="flex items-center space-x-3">
             <FiBell className="text-gray-700 cursor-pointer" size={18} />
-            <span className="text-gray-700 text-sm">Subject Clerk</span>
+            <span className="text-gray-700 text-sm">DC</span>
             <img
               src={userAvatar}
               alt="User Avatar"
@@ -151,18 +185,9 @@ const ClerkDashboard = () => {
 
       {/* Main Content */}
       <main className="flex-1 ml-56 pt-20 px-4">
-        {activeTab === 'overview' && !showSubmissionForm && (
+        {activeTab === 'overview' && (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-800">Overview</h2>
-              <button
-                onClick={() => setShowSubmissionForm(true)}
-                className="flex items-center px-4 py-2 bg-gradient-to-b from-purple-600 to-purple-900 text-white rounded-md hover:bg-purple-700 transition-colors"
-              >
-                <FiPlus className="mr-2" />
-                Add New Submission
-              </button>
-            </div>
+            <h2 className="text-xl font-semibold text-gray-800 mb-6">Overview</h2>
             {/* Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -178,7 +203,7 @@ const ClerkDashboard = () => {
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900">Approved Issues</h3>
                 <p className="text-3xl font-bold text-green-600">
-                  {issues.filter(issue => issue.status !== 'Pending').length}
+                  {issues.filter(issue => issue.status === 'DC Approved').length}
                 </p>
               </div>
             </div>
@@ -204,9 +229,6 @@ const ClerkDashboard = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Submitted
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -231,42 +253,12 @@ const ClerkDashboard = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {new Date(issue.submittedAt).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <button
-                            onClick={() => {
-                              setSelectedIssue(issue);
-                              setShowModal(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            View Details
-                          </button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
-          </div>
-        )}
-
-        {activeTab === 'overview' && showSubmissionForm && (
-          <div>
-            <div className="flex items-center mb-6">
-              <button
-                onClick={() => setShowSubmissionForm(false)}
-                className="flex items-center text-gray-600 hover:text-gray-800 mr-4"
-              >
-                <FiArrowLeft className="mr-2" />
-                Back
-              </button>
-              <h2 className="text-xl font-semibold text-gray-800">New Issue Submission</h2>
-            </div>
-            <IssueSubmit onSuccess={() => {
-              setShowSubmissionForm(false);
-              fetchIssues();
-            }} />
           </div>
         )}
 
@@ -298,9 +290,6 @@ const ClerkDashboard = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Submitted
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -320,27 +309,35 @@ const ClerkDashboard = () => {
                           {issue.priorityLevel}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
-                          {issue.status}
-                        </span>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {issue.status === 'Pending' ? (
+                          <>
+                            <button
+                              onClick={() => handleApproveIssue(issue.id)}
+                              className="text-green-600 hover:text-green-800 flex items-center"
+                              title="Approve"
+                            >
+                              <FiCheckCircle size={20} />
+                            </button>
+                            <button
+                              onClick={() => handleRejectIssue(issue.id)}
+                              className="text-red-600 hover:text-red-800 flex items-center"
+                              title="Reject"
+                            >
+                              <FiXCircle size={20} />
+                            </button>
+                          </>
+                        ) : (
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
+                            {issue.status}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {issue.location}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(issue.submittedAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <button
-                          onClick={() => {
-                            setSelectedIssue(issue);
-                            setShowModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          View Details
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -425,4 +422,4 @@ const ClerkDashboard = () => {
   );
 };
 
-export default ClerkDashboard;
+export default DCDashboard; 

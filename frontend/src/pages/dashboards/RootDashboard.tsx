@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiUsers, FiAlertCircle, FiShield, FiLogOut, FiBell } from 'react-icons/fi';
+import { FiUsers, FiAlertCircle, FiShield, FiLogOut, FiBell, FiMapPin } from 'react-icons/fi';
 import RegistrationPanel from '../../components/root/RegistrationPanel';
 import IssuePanel from '../../components/root/IssuePanel';
 import RolePanel from '../../components/root/RolePanel';
@@ -34,71 +34,69 @@ const RootDashboard = () => {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
-      {/* Top Navbar */}
-      <div className="bg-white shadow-md fixed top-0 left-0 w-full z-10 p-4 flex justify-between items-center">
-      <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">
-           Issue Tracker
-      </h1>
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
+      <aside className="w-56 bg-white border-r shadow-lg fixed left-0 top-0 bottom-0 flex flex-col">
+        {/* Sidebar Header */}
+        <div className="flex items-center space-x-2 px-4 py-4 border-b">
+          <FiMapPin className="text-purple-700" size={24} />
+          <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">Issue Tracker</span>
+        </div>
+        {/* Sidebar Navigation */}
+        <nav className="flex flex-col space-y-3 px-2 py-4">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => handleTabClick(tab.key)}
+              className={`flex items-center px-4 py-2 rounded-md transition-all text-left w-full ${
+                activeTab === tab.key
+                  ? 'bg-purple-100 text-purple-700 font-semibold'
+                  : 'hover:bg-purple-200 text-gray-700'
+              }`}
+            >
+              {tab.key === 'registration' && <FiUsers className="mr-2" size={20} />}
+              {tab.key === 'issues' && <FiAlertCircle className="mr-2" size={20} />}
+              {tab.key === 'roles' && <FiShield className="mr-2" size={20} />}
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+        {/* Sidebar Footer */}
+        <div className="mt-auto px-4 py-4 border-t flex justify-between items-center">
+          <span className="text-gray-500 text-sm">Super Admin</span>
+          <button
+            onClick={handleLogout}
+            title="Logout"
+            className="text-gray-500 hover:text-red-600"
+          >
+            <FiLogOut size={20} />
+          </button>
+        </div>
+      </aside>
 
-        <div className="flex items-center space-x-4 ml-auto">
-          <FiBell className="text-gray-700 cursor-pointer" size={20} />
-          <span className="text-gray-700 text-sm">Super Admin</span>
-          
-          {/* User Avatar */}
-          <img
-            src={userAvatar} 
-            alt="User Avatar"
-            className="rounded-full w-10 h-10"
-          />
+      {/* Top Navbar */}
+      <div className="fixed top-4 left-60 right-4 bg-white shadow-lg z-10 py-3 px-6 rounded-xl">
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">
+            Root Dashboard
+          </h1>
+          <div className="flex items-center space-x-3">
+            <FiBell className="text-gray-700 cursor-pointer" size={18} />
+            <img
+              src={userAvatar}
+              alt="User Avatar"
+              className="rounded-full w-8 h-8"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-1 pt-20">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white border-r shadow-sm fixed left-0 top-16 bottom-0 flex flex-col justify-between px-4 py-6">
-          {/* Top Navigation Section */}
-          <div>
-            <nav className="flex flex-col space-y-3">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => handleTabClick(tab.key)}
-                  className={`flex items-center px-4 py-2 rounded-md transition-all text-left w-full ${
-                    activeTab === tab.key
-                      ? 'bg-blue-100 text-purple-700 font-semibold'
-                      : 'hover:bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  {tab.key === 'registration' && <FiUsers className="mr-2" />}
-                  {tab.key === 'issues' && <FiAlertCircle className="mr-2" />}
-                  {tab.key === 'roles' && <FiShield className="mr-2" />}
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* Bottom Section */}
-          <div className="flex items-center justify-between border-t pt-4">
-            <span className="text-gray-500">Super Admin</span>
-            <button
-              onClick={handleLogout}
-              title="Logout"
-              className="text-gray-500 hover:text-red-600"
-            >
-              <FiLogOut size={20} />
-            </button>
-          </div>
-        </aside>
-
-        {/* Main Panel */}
-        <main className="flex-1 p-8 bg-gray-50 overflow-auto ml-64">
-          {activeTab === 'registration' && <RegistrationPanel />}
-          {activeTab === 'issues' && <IssuePanel />}
-          {activeTab === 'roles' && <RolePanel />}
-        </main>
-      </div>
+      {/* Main Content */}
+      <main className="flex-1 ml-56 pt-20 px-4">
+        {activeTab === 'registration' && <RegistrationPanel />}
+        {activeTab === 'issues' && <IssuePanel />}
+        {activeTab === 'roles' && <RolePanel />}
+      </main>
     </div>
   );
 };

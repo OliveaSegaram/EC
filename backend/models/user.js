@@ -2,14 +2,15 @@ module.exports = (sequelize, DataTypes) => {
     const User = sequelize.define('User', {
       username: {
         type: DataTypes.STRING,
-        allowNull: false,
-        unique: true
-
+        allowNull: false
       },
       email: {
         type: DataTypes.STRING,
+        allowNull: false,
         unique: true,
-        allowNull: false
+        validate: {
+          isEmail: true
+        }
       },
       password: {
         type: DataTypes.STRING,
@@ -24,17 +25,24 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: false
       },
       attachment: {
-        type: DataTypes.STRING
+        type: DataTypes.STRING,
+        allowNull: true
       },
       resetToken: {
         type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: true
       },
       resetTokenExpiry: {
         type: DataTypes.DATE,
-        allowNull: true,
+        allowNull: true
       }
-      
+    }, {
+      indexes: [
+        {
+          unique: true,
+          fields: ['email']
+        }
+      ]
     });
   
     return User;

@@ -8,6 +8,8 @@ import ResetPassword from '../pages/ResetPassword';
 
 import RootDashboard from '../pages/dashboards/RootDashboard';
 import ClerkDashboard from '../pages/dashboards/ClerkDashboard';
+import DcDashboard from '../pages/dashboards/DcDashboard';
+import SuperUserDashboard from '../pages/dashboards/SuperUserDashboard';
 
 
 // Role-based loader – no SidebarLayout here
@@ -17,9 +19,11 @@ const DashboardLoader = ({ role }: { role: string }) => {
       return <RootDashboard />; 
     case 'subject_clerk':
       return <ClerkDashboard />; 
-    // case 'super_user': return <SuperUserDashboard />;
+    case 'dc':
+      return <DcDashboard />;
+    case 'super_user':
+      return <SuperUserDashboard />;
     // case 'technical_officer': return <TechnicalOfficerDashboard />;
-    // case 'dc': return <DcDashboard />;
     default:
       return <div className="p-6">Unauthorized role</div>;
   }

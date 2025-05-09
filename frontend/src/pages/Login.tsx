@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../provider/AuthProvider';
 import { AppContext } from '../provider/AppContext';
 import { LoginAssets } from '../assets/icons/login/login';
+import { toast } from 'react-toastify';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ const Login = () => {
       setIsLoggedIn(true);
       navigate(`/dashboard/${data.role}`);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

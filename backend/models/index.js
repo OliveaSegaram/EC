@@ -1,7 +1,6 @@
 const { Sequelize, DataTypes } = require('sequelize');
 require('dotenv').config();
 
-
 console.log("Loaded Dialect from .env:", process.env.DB_DIALECT);
 
 const sequelize = new Sequelize(
@@ -25,8 +24,20 @@ db.User = require('./user')(sequelize, DataTypes);
 db.Role = require('./role')(sequelize, DataTypes);
 db.Issue = require('./issue')(sequelize, DataTypes);
 
-// Relationships
-db.Role.hasMany(db.User, { foreignKey: 'roleId' });
-db.User.belongsTo(db.Role, { foreignKey: 'roleId' });
+// Define associations
+db.Role.hasMany(db.User, { 
+  foreignKey: 'roleId',
+  onDelete: 'RESTRICT'
+});
+db.User.belongsTo(db.Role, { 
+  foreignKey: 'roleId'
+});
+
+// Define associations
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
 
 module.exports = db;

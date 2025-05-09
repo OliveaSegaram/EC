@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FaTrash } from 'react-icons/fa';
 import { useAppContext } from '../../provider/AppContext';
 import { JSX } from 'react/jsx-runtime';
+import { toast } from 'react-toastify';
 
 const RolePanel: React.FC = (): JSX.Element => {  
   const { backendUrl } = useAppContext();
@@ -37,16 +38,13 @@ const RolePanel: React.FC = (): JSX.Element => {
   };
 
   const handleDelete = async (id: number) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this role?");
-    if (!confirmDelete) return;
-
     await fetch(`${backendUrl}/root/roles/${id}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
     });
-
+    toast.success('Role deleted successfully');
     fetchRoles();
   };
 

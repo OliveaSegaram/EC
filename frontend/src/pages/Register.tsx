@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoginAssets } from '../assets/icons/login/login';
 import { useAppContext } from '../provider/AppContext';
+import { toast } from 'react-toastify';
 
 const Register = () => {
     const { backendUrl } = useAppContext();
@@ -49,10 +50,10 @@ const Register = () => {
         throw new Error(err.message || 'Registration failed');
       }
 
-      alert('Registration submitted! Wait for root approval.');
+      toast.success('Registration submitted! Wait for root approval.');
       navigate('/login');
     } catch (err: any) {
-      alert(err.message || 'Registration failed');
+      toast.error(err.message || 'Registration failed');
     }
   };
 

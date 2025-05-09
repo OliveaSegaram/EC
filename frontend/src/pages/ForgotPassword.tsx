@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -21,7 +22,7 @@ const ForgotPassword: React.FC = () => {
       if (!res.ok) throw new Error(data.message || 'Failed to send email');
       setShowSuccess(true);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
