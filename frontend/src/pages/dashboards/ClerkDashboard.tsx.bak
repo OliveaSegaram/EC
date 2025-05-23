@@ -1,0 +1,545 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FiHome, FiAlertCircle, FiLogOut, FiBell, FiPlus, FiArrowLeft, FiMapPin, FiEdit, FiTrash2, FiEye } from 'react-icons/fi';
+import axios from 'axios';
+import userAvatar from '../../assets/icons/login/User.svg';
+import IssueSubmit from '../../components/clerk/issuesubmit';
+
+interface Issue {
+  id: number;
+  deviceId: string;
+  complaintType: string;
+  description: string;
+  priorityLevel: string;
+  location: string;
+  status: string;
+  submittedAt: string;
+  attachment: string | null;
+  underWarranty: boolean;
+}
+
+const ClerkDashboard = () => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'overview' | 'issues'>('overview');
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<'All' | 'Pending' | 'Approved'>('All');
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState<Issue | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{open: boolean, issue: Issue | null}>({open: false, issue: null});
+
+  useEffect(() => {
+    fetchIssues();
+  }, []);
+
+  const fetchIssues = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await axios.get('http://localhost:5000/api/issues', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data && response.data.issues) {
+        setIssues(response.data.issues);
+      }
+    } catch (error) {
+      console.error('Error fetching issues:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'DC Approved':
+        return 'bg-blue-100 text-blue-800';
+      case 'Super User Approved':
+        return 'bg-green-100 text-green-800';
+      case 'Super Admin Approved':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'High':
+        return 'bg-red-100 text-red-800';
+      case 'Medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Low':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
+      <aside className="w-56 bg-white border-r shadow-lg fixed left-0 top-0 bottom-0 flex flex-col">
+        {/* Sidebar Header */}
+        <div className="flex items-center space-x-2 px-4 py-4 border-b">
+          <FiMapPin className="text-purple-700" size={24} />
+          <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">Issue Tracker</span>
+        </div>
+        {/* Sidebar Navigation */}
+        <nav className="flex flex-col space-y-3 px-2 py-4">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center px-4 py-2 rounded-md transition-all text-left w-full ${
+              activeTab === 'overview'
+                ? 'bg-purple-100 text-purple-700 font-semibold'
+                : 'hover:bg-purple-200 text-gray-700'
+            }`}
+          >
+            <FiHome className="mr-2" size={20} /> Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('issues')}
+            className={`flex items-center px-4 py-2 rounded-md transition-all text-left w-full ${
+              activeTab === 'issues'
+                ? 'bg-purple-100 text-purple-700 font-semibold'
+                : 'hover:bg-purple-200 text-gray-700'
+            }`}
+          >
+            <FiAlertCircle className="mr-2" size={20} /> Issues
+          </button>
+        </nav>
+        {/* Sidebar Footer */}
+        <div className="mt-auto px-4 py-4 border-t">
+          <span className="text-gray-500 text-sm">Subject Clerk</span>
+        </div>
+      </aside>
+
+      {/* Top Navbar */}
+      <div className="fixed top-4 left-60 right-4 bg-white shadow-lg z-10 py-3 px-6 rounded-xl">
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">
+            Subject Clerk Dashboard
+          </h1>
+          <div className="flex items-center space-x-3">
+            <FiBell className="text-gray-700 cursor-pointer" size={18} />
+            <span className="text-gray-700 text-sm">Subject Clerk</span>
+            <div className="relative">
+              <img
+                src={userAvatar}
+                alt="User Avatar"
+                className="rounded-full w-8 h-8 cursor-pointer"
+                onClick={() => setShowDropdown(!showDropdown)}
+              />
+              {showDropdown && (
+                <div 
+                  ref={dropdownRef}
+                  className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
+                >
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <FiLogOut className="mr-2" size={16} /> Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1 ml-56 pt-20 px-4">
+        {activeTab === 'overview' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">Overview</h2>
+              <button
+                onClick={() => setShowSubmissionForm(true)}
+                className="flex items-center px-4 py-2 bg-gradient-to-b from-purple-600 to-purple-900 text-white rounded-md hover:bg-purple-700 transition-colors"
+              >
+                <FiPlus className="mr-2" />
+                Add New Submission
+              </button>
+            </div>
+            {/* Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Total Issues</h3>
+                <p className="text-3xl font-bold text-blue-600">{issues.length}</p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Pending Issues</h3>
+                <p className="text-3xl font-bold text-yellow-600">
+                  {issues.filter(issue => issue.status === 'Pending').length}
+                </p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Approved Issues</h3>
+                <p className="text-3xl font-bold text-green-600">
+                  {issues.filter(issue => issue.status !== 'Pending').length}
+                </p>
+              </div>
+            </div>
+            {/* Recent Issues */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Issues</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Device ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Priority
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Submitted
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {issues.slice(0, 5).map((issue) => (
+                      <tr key={issue.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {issue.deviceId}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {issue.complaintType}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
+                            {issue.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priorityLevel)}`}>
+                            {issue.priorityLevel}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {new Date(issue.submittedAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <button
+                            onClick={() => {
+                              setSelectedIssue(issue);
+                              setShowModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+        {activeTab === 'issues' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">Issues</h2>
+              <button
+                onClick={() => setShowSubmissionForm(true)}
+                className="flex items-center px-4 py-2 bg-gradient-to-b from-purple-600 to-purple-900 text-white rounded-md hover:bg-purple-700 transition-colors"
+              >
+                <FiPlus className="mr-2" />
+                Add New Submission
+              </button>
+            </div>
+            {/* Filter */}
+            <div className="flex justify-between items-center mb-6">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as 'All' | 'Pending' | 'Approved')}
+                className="px-4 py-2 rounded-md border border-gray-200"
+              >
+                <option value="All">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+              </select>
+            </div>
+            {/* Issues Table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Device ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Priority
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Submitted
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {issues.filter((issue) => {
+                    if (filterStatus === 'All') return true;
+                    return issue.status === filterStatus;
+                  }).map((issue) => (
+                    <tr key={issue.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {issue.deviceId}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {issue.complaintType}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
+                          {issue.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priorityLevel)}`}>
+                          {issue.priorityLevel}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(issue.submittedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <button
+                          onClick={() => {
+                            setSelectedIssue(issue);
+                            setShowModal(true);
+                            setEditMode(false);
+                          }}
+                          className="text-blue-600 hover:text-blue-900 inline-flex items-center mr-2"
+                          title="View Details"
+                        >
+                          <FiEye size={20} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedIssue(issue);
+                            setEditMode(true);
+                            setEditForm({ ...issue });
+                            setShowModal(true);
+                          }}
+                          className="text-green-600 hover:text-green-900 inline-flex items-center mr-2"
+                          title="Edit Issue"
+                        >
+                          <FiEdit size={20} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeleteConfirm({ open: true, issue });
+                          }}
+                          className="text-red-600 hover:text-red-900 inline-flex items-center"
+                          title="Delete Issue"
+                        >
+                          <FiTrash2 size={20} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {/* Modal for Edit or View Details */}
+        {showModal && selectedIssue && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">{editMode ? 'Edit Issue' : 'Issue Details'}</h3>
+                <button onClick={() => { setShowModal(false); setEditForm(null); setEditMode(false); }} className="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
+              </div>
+              {editMode && editForm ? (
+                <form onSubmit={async e => {
+  e.preventDefault();
+  if (!editForm) return;
+  setIsSaving(true);
+  try {
+    // Debug: log form data
+    console.log('Submitting editForm:', editForm);
+    const token = localStorage.getItem('token');
+    const payload = {
+      ...editForm,
+      deviceId: editForm.deviceId || '',
+      complaintType: editForm.complaintType || '',
+      description: editForm.description || '',
+      priorityLevel: editForm.priorityLevel || '',
+      location: editForm.location || '',
+      status: editForm.status || '',
+      submittedAt: editForm.submittedAt || '',
+      underWarranty: typeof editForm.underWarranty === 'boolean' ? editForm.underWarranty : false,
+      // attachment: editForm.attachment || null, // If you want to allow attachments
+    };
+    const response = await axios.put(`http://localhost:5000/api/issues/${editForm.id}`, payload, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    setShowModal(false);
+    setEditMode(false);
+    setEditForm(null);
+    fetchIssues();
+    if (response.data && response.data.success) {
+      alert('Issue updated successfully');
+    } else {
+      alert('Issue update request sent, but no success message from server.');
+    }
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      alert('Issue not found (404)');
+    } else {
+      alert('Failed to update issue: ' + (error?.response?.data?.message || error.message || error));
+    }
+  } finally {
+    setIsSaving(false);
+  }
+}}>
+                  <div className="mb-3">
+                    <label className="block text-gray-700 text-sm font-medium mb-1">Device ID</label>
+                    <input value={editForm.deviceId} onChange={e => setEditForm({...editForm, deviceId: e.target.value})} className="w-full border rounded px-2 py-1" />
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-gray-700 text-sm font-medium mb-1">Complaint Type</label>
+                    <input value={editForm.complaintType} onChange={e => setEditForm({...editForm, complaintType: e.target.value})} className="w-full border rounded px-2 py-1" />
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-gray-700 text-sm font-medium mb-1">Description</label>
+                    <textarea value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="w-full border rounded px-2 py-1" />
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-gray-700 text-sm font-medium mb-1">Priority</label>
+                    <select value={editForm.priorityLevel} onChange={e => setEditForm({...editForm, priorityLevel: e.target.value})} className="w-full border rounded px-2 py-1">
+                      <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Low">Low</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-end space-x-2 mt-4">
+                    <button type="button" onClick={() => { setShowModal(false); setEditForm(null); setEditMode(false); }} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cancel</button>
+                    <button type="submit" className="px-4 py-2 rounded bg-purple-700 text-white hover:bg-purple-800" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save'}</button>
+                  </div>
+                </form>
+              ) : (
+                <div>
+                  <div className="mb-2"><span className="font-medium">Device ID:</span> {selectedIssue.deviceId}</div>
+                  <div className="mb-2"><span className="font-medium">Complaint Type:</span> {selectedIssue.complaintType}</div>
+                  <div className="mb-2"><span className="font-medium">Description:</span> {selectedIssue.description}</div>
+                  <div className="mb-2"><span className="font-medium">Priority:</span> {selectedIssue.priorityLevel}</div>
+                  <div className="mb-2"><span className="font-medium">Status:</span> {selectedIssue.status}</div>
+                  <div className="mb-2"><span className="font-medium">Location:</span> {selectedIssue.location}</div>
+                  <div className="mb-2"><span className="font-medium">Submitted At:</span> {new Date(selectedIssue.submittedAt).toLocaleString()}</div>
+                  {selectedIssue.attachment && (
+                    <div className="mb-2"><span className="font-medium">Attachment:</span> <a href={selectedIssue.attachment} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View</a></div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {/* New Issue Submission Modal */}
+        {showSubmissionModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">New Issue Submission</h3>
+                <button 
+                  onClick={() => setShowSubmissionModal(false)} 
+                  className="text-gray-500 hover:text-gray-700 text-xl"
+                >
+                  &times;
+                </button>
+              </div>
+              <IssueSubmit onSuccess={() => { setShowSubmissionModal(false); fetchIssues(); }} />
+            </div>
+          </div>
+        )}
+        {/* Delete Confirmation Dialog */}
+        {deleteConfirm.open && deleteConfirm.issue && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+              <h3 className="text-lg font-semibold mb-4">Delete Issue</h3>
+              <p>Are you sure you want to delete this issue?</p>
+              <div className="flex justify-end space-x-2 mt-4">
+                <button onClick={() => setDeleteConfirm({ open: false, issue: null })} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!deleteConfirm.issue) return;
+                    setIsDeleting(true);
+                    try {
+                      const token = localStorage.getItem('token');
+                      try {
+                        await axios.delete(`http://localhost:5000/api/issues/${deleteConfirm.issue.id}`, {
+                          headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        alert('Issue deleted successfully');
+                      } catch (error: any) {
+                        if (error?.response?.status === 404) {
+                          alert('Issue not found or already deleted.');
+                        } else {
+                          alert('Failed to delete issue: ' + (error?.response?.data?.message || error.message || error));
+                        }
+                      } finally {
+                        setDeleteConfirm({ open: false, issue: null });
+                        fetchIssues();
+                        setIsDeleting(false);
+                      }
+                    } catch (error: any) {
+                      alert('Failed to delete issue: ' + (error?.response?.data?.message || error.message || error));
+                    }
+                  }}
+                  className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default ClerkDashboard;
