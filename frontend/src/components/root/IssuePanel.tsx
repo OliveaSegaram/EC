@@ -76,6 +76,7 @@ const IssuePanel: React.FC = () => {
         await fetchIssues();
         toast.success('Issue approved successfully');
         setShowApproveModal(false);
+        setShowModal(false); // Close the issue details modal
         setApproveComment('');
         return true;
       }
@@ -127,9 +128,10 @@ const IssuePanel: React.FC = () => {
         }
       );
 
-      // Clear form and close modal
+      // Clear form and close modals
       setRejectComment('');
       setShowCommentModal(false);
+      setShowModal(false); // Close the issue details modal
 
       // Refresh issues to show updated status and comment
       await fetchIssues();

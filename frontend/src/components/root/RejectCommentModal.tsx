@@ -30,29 +30,38 @@ const RejectCommentModal: React.FC<RejectCommentModalProps> = ({
 }) => {
   if (!isOpen) return null;
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isOptional && !comment.trim()) {
+    if (isReject && !isOptional && !comment.trim()) {
       toast.error('Please provide a comment');
       return;
     }
     
-    // Create a new issue object with the updated comment
-    const issue: Issue = {
-      id: issueId || 0, // This should always be defined
-      deviceId: '',
-      complaintType: '',
-      description: '',
-      priorityLevel: '',
-      location: '',
-      status: '',
-      submittedAt: '',
-      attachment: null,
-      underWarranty: false,
-      comment: comment.trim() || undefined,
-    };
-    
-    onSubmit(issue);
+    try {
+      // Create a new issue object with the updated comment
+      const issue: Issue = {
+        id: issueId || 0, // This should always be defined
+        deviceId: '',
+        complaintType: '',
+        description: '',
+        priorityLevel: '',
+        location: '',
+        status: '',
+        submittedAt: '',
+        attachment: null,
+        underWarranty: false,
+        comment: comment.trim() || undefined,
+      };
+      
+      // Call the onSubmit handler and wait for it to complete
+      await onSubmit(issue);
+      
+      // Close the modal after successful submission
+      onClose();
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      // Error handling is done in the parent component
+    }
   };
   
   return (

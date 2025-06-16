@@ -117,7 +117,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
             )}
             
             {/* Super Admin's Rejection Reason */}
-            {selectedIssue.status === 'Rejected by Super Admin' && (
+            {selectedIssue.status === ISSUE_STATUS.SUPER_ADMIN_REJECTED && (
               <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded-r">
                 <h4 className="text-sm font-medium text-red-800 mb-1">Super Admin's Rejection Reason</h4>
                 <p className="text-sm text-gray-700">
@@ -127,9 +127,11 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
             )}
             
             {/* Super Admin's Approval Comment */}
-            {selectedIssue.status === 'Issue approved by Super Admin' && selectedIssue.comment && (
+            {(selectedIssue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED || selectedIssue.status === ISSUE_STATUS.RESOLVED) && selectedIssue.comment && (
               <div className="p-4 bg-green-50 border-l-4 border-green-400 rounded-r">
-                <h4 className="text-sm font-medium text-green-800 mb-1">Approval Note</h4>
+                <h4 className="text-sm font-medium text-green-800 mb-1">
+                  {selectedIssue.status === ISSUE_STATUS.RESOLVED ? 'Approval Note' : 'Super Admin Approval Note'}
+                </h4>
                 <p className="text-sm text-gray-700">{selectedIssue.comment}</p>
               </div>
             )}

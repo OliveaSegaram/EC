@@ -25,9 +25,13 @@ interface ApiResponse<T> {
 
 const AssignedTasks = () => {
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [filteredIssues, setFilteredIssues] = useState<Issue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [comment, setComment] = useState('');
+  const [showResolved, setShowResolved] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  
   interface UpdateRequestData {
     comment: string;
     resolutionDetails?: string;
@@ -38,6 +42,40 @@ const AssignedTasks = () => {
   useEffect(() => {
     fetchAssignedIssues();
   }, []);
+  
+  // Update filtered issues when issues or activeFilter changes
+  useEffect(() => {
+    let result = [...issues];
+    
+    // Apply active filter if any
+    if (activeFilter === 'Resolved' || activeFilter === 'Reopened') {
+      // Show both Resolved and Reopened issues
+      result = result.filter(issue => 
+        issue.status === 'Resolved' || issue.status === 'Reopened'
+      );
+    } else if (activeFilter === 'Assigned to Technician') {
+      // Handle assigned issues (might be 'Assigned to Technical Officer' or similar)
+      result = result.filter(issue => 
+        issue.status.includes('Assigned') || issue.status.includes('assigned')
+      );
+    } else if (activeFilter) {
+      // Show only the selected status (for other statuses like 'In Progress')
+      result = result.filter(issue => issue.status === activeFilter);
+    }
+    
+    setFilteredIssues(result);
+  }, [issues, activeFilter]);
+  
+  // Count issues by status, normalizing status names
+  const statusCounts = issues.reduce((acc, issue) => {
+    let status = issue.status;
+    // Normalize status names for counting
+    if (status.includes('Assigned') || status.includes('assigned')) {
+      status = 'Assigned to Technician';
+    }
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   const fetchAssignedIssues = async () => {
     try {
@@ -134,6 +172,65 @@ const AssignedTasks = () => {
     <div className="p-6">
       <div className="bg-white shadow-sm rounded-lg p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-6">Assigned Tasks</h2>
+        
+        {/* Status Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Assigned to Technical Officer Card */}
+          <div 
+            className={`p-4 rounded-lg shadow cursor-pointer transition-all ${activeFilter === 'Assigned to Technician' ? 'bg-purple-100 border-l-4 border-purple-500' : 'bg-white'}`}
+            onClick={() => setActiveFilter(activeFilter === 'Assigned to Technician' ? null : 'Assigned to Technician')}
+          >
+            <h3 className="text-gray-600 font-medium">Assigned to You</h3>
+            <p className="text-2xl font-bold text-gray-800 mt-2">
+              {statusCounts['Assigned to Technician'] || 0}
+            </p>
+          </div>
+
+          {/* In Progress Card */}
+          <div 
+            className={`p-4 rounded-lg shadow cursor-pointer transition-all ${activeFilter === 'In Progress' ? 'bg-yellow-100 border-l-4 border-yellow-500' : 'bg-white'}`}
+            onClick={() => setActiveFilter(activeFilter === 'In Progress' ? null : 'In Progress')}
+          >
+            <h3 className="text-gray-600 font-medium">In Progress</h3>
+            <p className="text-2xl font-bold text-gray-800 mt-2">
+              {statusCounts['In Progress'] || 0}
+            </p>
+          </div>
+
+          {/* Resolved/Reopened Card */}
+          <div 
+            className={`p-4 rounded-lg shadow cursor-pointer transition-all ${activeFilter === 'Resolved' || activeFilter === 'Reopened' ? 'bg-green-50 border-l-4 border-green-500' : 'bg-white'}`}
+            onClick={() => {
+              // Toggle between showing all issues and showing resolved/reopened
+              if (activeFilter === 'Resolved' || activeFilter === 'Reopened') {
+                setActiveFilter(null);
+              } else {
+                setActiveFilter('Resolved'); // This will trigger showing both statuses
+              }
+            }}
+          >
+            <div className="flex justify-between items-center">
+              <h3 className="text-gray-600 font-medium">Resolved/Reopened</h3>
+              <div className="flex space-x-1">
+                <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                  {statusCounts['Resolved'] || 0} Resolved
+                </span>
+                <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
+                  {statusCounts['Reopened'] || 0} Reopened
+                </span>
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="text-2xl font-bold text-gray-800">
+                {(statusCounts['Resolved'] || 0) + (statusCounts['Reopened'] || 0)}
+              </p>
+              <div className="flex items-center mt-1 text-xs text-gray-500">
+                <span>Total: {(statusCounts['Resolved'] || 0) + (statusCounts['Reopened'] || 0)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto bg-white shadow-md rounded-xl">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -148,7 +245,7 @@ const AssignedTasks = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {issues.map((issue) => (
+              {filteredIssues.map((issue) => (
                 <tr key={issue.id}>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">#{issue.id}</td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{issue.complaintType}</td>
@@ -193,6 +290,15 @@ const AssignedTasks = () => {
                 <h4 className="text-sm font-medium text-gray-500">Description</h4>
                 <p className="mt-1 text-gray-700">{selectedIssue.description}</p>
               </div>
+              
+              {/* Approval Comment */}
+              {selectedIssue.status !== 'Issue assigned by Super User' && selectedIssue.comment && (
+                <div className="p-3 bg-blue-50 border-l-4 border-blue-400 rounded-r">
+                  <h4 className="text-sm font-medium text-blue-800 mb-1">Approval Note</h4>
+                  <p className="text-sm text-gray-700">{selectedIssue.comment}</p>
+                </div>
+              )}
+              
               {selectedIssue.attachment && (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium text-gray-500 mb-2">Attachment</h4>
