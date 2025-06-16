@@ -70,25 +70,7 @@ async function seedDatabase() {
       defaults: { name: 'Head Office' }
     });
     
-    // Create root user if not exists
-    console.log('Creating root user...');
-    const rootUser = await db.User.findOne({ where: { email: 'root@example.com' } });
-    if (!rootUser) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      await db.User.create({
-        empId: 'ROOT001',
-        username: 'root',
-        email: 'root@example.com',
-        password: hashedPassword,
-        roleId: adminRole[0].id,
-        skillId: defaultSkill[0].id,
-        districtId: defaultDistrict[0].id,
-        isVerified: true
-      });
-      console.log('Root user created successfully!');
-    } else {
-      console.log('Root user already exists');
-    }
+    // Root user creation is handled in seedRootUser.js
 
     // Create districts
     console.log('Creating districts...');
@@ -102,7 +84,7 @@ async function seedDatabase() {
     // Create skills
     console.log('Creating skills...');
     for (const skillName of skills) {
-      if (skillName !== 'Administration') { // Skip if already created
+      if (skillName !== 'Administration') { 
         await db.Skill.findOrCreate({
           where: { name: skillName },
           defaults: { name: skillName }

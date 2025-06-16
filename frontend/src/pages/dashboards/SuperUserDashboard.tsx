@@ -12,7 +12,7 @@ import axios from 'axios';
 import { useAppContext } from '../../provider/AppContext';
 import userAvatar from '../../assets/icons/login/User.svg';
 import Approvals from '../../components/superuser/Approvals';
-import Status from '../../components/superuser/Status';
+import Dashboard from '../../components/superuser/Dashboard';
 
 interface UserProfile {
   username: string;
@@ -25,7 +25,7 @@ const SuperUserDashboard = () => {
   const location = useLocation();
   const { setIsLoggedIn } = useAppContext();
 
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Approvals'>('Overview');
+  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Approvals'>('Dashboard');
   const [showDropdown, setShowDropdown] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -92,14 +92,14 @@ const SuperUserDashboard = () => {
   {/* Sidebar Navigation – now moved to top */}
   <nav className="flex flex-col space-y-3 px-2 py-4">
     <button
-      onClick={() => handleTabClick('Overview')}
+      onClick={() => handleTabClick('Dashboard')}
       className={`flex items-center px-4 py-2 rounded-md transition-all text-left w-full ${
-        activeTab === 'Overview'
+        activeTab === 'Dashboard'
           ? 'bg-purple-100 text-purple-700 font-semibold'
           : 'hover:bg-purple-200 text-gray-700'
       }`}
     >
-      <FiHome className="mr-2" size={20} /> Overview
+      <FiHome className="mr-2" size={20} /> Dashboard
     </button>
     <button
       onClick={() => handleTabClick('Approvals')}
@@ -163,7 +163,7 @@ const SuperUserDashboard = () => {
 
       {/* Main Content */}
       <main className="flex-1 ml-56 pt-20 px-4">
-        {activeTab === 'Overview' && <Status />}
+        {activeTab === 'Dashboard' && <Dashboard />}
         {activeTab === 'Approvals' && <Approvals />}
       </main>
     </div>

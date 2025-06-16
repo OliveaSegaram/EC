@@ -18,8 +18,8 @@ const seedRootUser = async () => {
       password: hashedPassword,
       roleId: rootRole.id,
       isVerified: true,
-      districtId: 1,  // Add a default district
-      skillId: 1      // Add a default skill
+      districtId: null,  // Root user doesn't need a district
+      skillId: null      // Root user doesn't need a skill
     });
 
     console.log('Root user seeded.');

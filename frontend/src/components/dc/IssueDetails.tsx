@@ -11,6 +11,7 @@ import {
   FiCheckCircle,
   FiXCircle 
 } from 'react-icons/fi';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 interface Issue {
   id: number;
@@ -43,8 +44,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
   showModal,
   setShowModal,
   setSelectedIssue,
-  getStatusColor,
-  getPriorityColor,
+  getStatusColor,  // Keeping for backward compatibility
+  getPriorityColor, // Keeping for backward compatibility
   handleApproveIssue,
   openRejectCommentModal,
   isDashboardView = false
@@ -79,8 +80,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
             <div>
               <h2 className="text-2xl font-bold">Issue #{selectedIssue.id}</h2>
               <div className="flex items-center mt-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedIssue.status)}`}>
-                  {selectedIssue.status}
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${ISSUE_STATUS.getStatusColor(selectedIssue.status)}`}>
+                  {ISSUE_STATUS.getDisplayName(selectedIssue.status)}
                 </span>
                 <span className="ml-3 text-purple-100 text-sm">
                   <FiCalendar className="inline mr-1" />

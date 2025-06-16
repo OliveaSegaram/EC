@@ -5,6 +5,7 @@ import axios from 'axios';
 import userAvatar from '../../assets/icons/login/User.svg';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 // Import components
 import IssueTable from '../../components/dc/IssueTable';
@@ -71,6 +72,7 @@ const DCDashboard = () => {
 
     fetchUserProfile();
   }, []);
+
   const [activeTab, setActiveTab] = useState<'overview' | 'issues'>('overview');
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
@@ -186,8 +188,22 @@ const DCDashboard = () => {
       if (response.data) {
         console.log('Issues data received:', response.data);
         if (response.data.issues) {
-          console.log('Setting issues:', response.data.issues);
-          setIssues(response.data.issues);
+          // Map statuses to ensure they match our constants
+          const normalizedIssues = response.data.issues.map((issue: any) => ({
+            ...issue,
+            // Ensure status matches one of our constants
+            status: Object.values(ISSUE_STATUS).includes(issue.status as any) 
+              ? issue.status 
+              : issue.status === 'Rejected' 
+                ? ISSUE_STATUS.DC_REJECTED 
+                : issue.status === 'Approved by DC' 
+                  ? ISSUE_STATUS.DC_APPROVED 
+                  : issue.status
+          }));
+          
+          console.log('Setting normalized issues:', normalizedIssues);
+          setIssues(normalizedIssues);
+          
           toast.update(toastId, {
             render: 'Issues loaded successfully',
             type: 'success',
@@ -219,11 +235,16 @@ const DCDashboard = () => {
       }
     } catch (error) {
       console.error('Error fetching issues:', error);
+      setIssues([]);
+      const errorMessage = axios.isAxiosError(error) 
+        ? (error.response?.data?.message || 'Failed to fetch issues')
+        : 'An unexpected error occurred';
+      
       toast.update(toastId, {
-        render: 'Error fetching issues. Please try again.',
+        render: `Error: ${errorMessage}`,
         type: 'error',
         isLoading: false,
-        autoClose: 3000,
+        autoClose: 5000,
         closeButton: true
       });
     }
@@ -237,10 +258,25 @@ const DCDashboard = () => {
         navigate('/login');
         return;
       }
-      await axios.post(`http://localhost:5000/api/issues/${issueId}/approve/dc`, {}, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      await fetchIssues();
+      
+      await axios.post(
+        `http://localhost:5000/api/issues/${issueId}/approve-dc`,
+        { comment: 'Approved by DC' },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      // Update the issue status locally
+      setIssues(issues.map(issue => 
+        issue.id === issueId 
+          ? { ...issue, status: ISSUE_STATUS.DC_APPROVED, comment: 'Approved by DC' } 
+          : issue
+      ));
+      
       toast.update(toastId, {
         render: 'Issue approved successfully',
         type: 'success',
@@ -248,6 +284,9 @@ const DCDashboard = () => {
         autoClose: 3000,
         closeButton: true
       });
+      
+      // Refresh issues to get the latest data
+      await fetchIssues();
     } catch (error) {
       console.error('Error approving issue:', error);
       toast.update(toastId, {
@@ -260,56 +299,42 @@ const DCDashboard = () => {
     }
   };
 
-  const handleRejectIssue = async (issueId: number) => {
-    const toastId = toast.loading('Rejecting issue...');
+  const handleRejectSubmit = async (issueId: number) => {
+    if (!rejectComment.trim()) {
+      toast.error('Please provide a reason for rejection');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
+      await axios.post(
+        `http://localhost:5000/api/issues/${issueId}/reject-dc`,
+        { comment: rejectComment },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
       
-      // Make sure we have a comment
-      if (!rejectComment.trim()) {
-        toast.update(toastId, {
-          render: 'Please provide a reason for rejection',
-          type: 'warning',
-          isLoading: false,
-          autoClose: 3000,
-          closeButton: true
-        });
-        return;
-      }
+      // Update the issue status locally
+      setIssues(issues.map(issue => 
+        issue.id === issueId 
+          ? { ...issue, status: ISSUE_STATUS.DC_REJECTED, comment: rejectComment } 
+          : issue
+      ));
       
-      // Send the comment with the rejection request
-      await axios.post(`http://localhost:5000/api/issues/${issueId}/reject/dc`, 
-        { comment: rejectComment }, 
-        { headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      // Clear form and close modal
-      setRejectComment('');
       setShowCommentModal(false);
+      setRejectComment('');
+      setCommentIssue(null);
+      toast.success('Issue rejected successfully');
       
-      // Refresh issues to show updated status and comment
+      // Refresh issues to get the latest data
       await fetchIssues();
-      
-      toast.update(toastId, {
-        render: 'Issue rejected successfully',
-        type: 'success',
-        isLoading: false,
-        autoClose: 3000,
-        closeButton: true
-      });
     } catch (error) {
       console.error('Error rejecting issue:', error);
-      toast.update(toastId, {
-        render: 'Error rejecting issue',
-        type: 'error',
-        isLoading: false,
-        autoClose: 3000,
-        closeButton: true
-      });
+      toast.error('Failed to reject issue');
     }
   };
   
@@ -517,7 +542,7 @@ const DCDashboard = () => {
         rejectComment={rejectComment}
         setRejectComment={setRejectComment}
         setShowCommentModal={setShowCommentModal}
-        handleRejectIssue={handleRejectIssue}
+        handleRejectIssue={handleRejectSubmit}
       />
     </div>
   );

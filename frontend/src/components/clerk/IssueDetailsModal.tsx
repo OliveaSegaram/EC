@@ -1,5 +1,7 @@
-import React from 'react';
-import { FiX, FiDownload, FiCalendar, FiHardDrive, FiAlertCircle, FiMapPin, FiCheckCircle, FiClock, FiTag, FiUser, FiFile, FiInfo } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiX, FiDownload, FiCalendar, FiHardDrive, FiAlertCircle, FiMapPin, FiCheckCircle, FiClock, FiTag, FiUser, FiFile, FiInfo, FiRefreshCw } from 'react-icons/fi';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 interface Issue {
   id: number;
@@ -24,6 +26,7 @@ interface IssueDetailsModalProps {
   onClose: () => void;
   getStatusColor: (status: string) => string;
   getPriorityColor: (priority: string) => string;
+  onReopen?: (issueId: number) => Promise<void>;
 }
 
 const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
@@ -31,6 +34,7 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
   onClose,
   getStatusColor,
   getPriorityColor,
+  onReopen,
 }) => {
   if (!issue) return null;
 
@@ -188,14 +192,28 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Close
-            </button>
+          <div className="mt-8 flex justify-between">
+            {/* Reopen button for resolved or completed issues */}
+            {(issue.status === 'Resolved' || issue.status === 'Completed') && onReopen && (
+              <button
+                type="button"
+                onClick={() => onReopen(issue.id)}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-200 flex items-center"
+              >
+                <FiRefreshCw className="mr-2" />
+                Reopen Issue
+              </button>
+            )}
+            
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fi';
 
 import { Issue } from '../../types/issue';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 interface RootIssueDetailsProps {
   selectedIssue: Issue | null;
@@ -106,26 +107,38 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
           {/* Show status-related comments */}
           <div className="space-y-4 mb-6">
             {/* DC's Rejection Reason */}
-            {selectedIssue.status === 'Rejected by DC' && selectedIssue.dcRejectionReason && (
-              <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r">
-                <h4 className="text-sm font-medium text-yellow-800 mb-1">DC's Rejection Reason</h4>
-                <p className="text-sm text-gray-700">{selectedIssue.dcRejectionReason}</p>
+            {selectedIssue.status === ISSUE_STATUS.DC_REJECTED && (
+              <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded-r">
+                <h4 className="text-sm font-medium text-red-800 mb-1">DC's Rejection Reason</h4>
+                <p className="text-sm text-gray-700">
+                  {selectedIssue.comment || 'No reason provided'}
+                </p>
               </div>
             )}
             
             {/* Super Admin's Rejection Reason */}
-            {selectedIssue.status === 'Rejected by Super Admin' && selectedIssue.comment && (
+            {selectedIssue.status === 'Rejected by Super Admin' && (
               <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded-r">
                 <h4 className="text-sm font-medium text-red-800 mb-1">Super Admin's Rejection Reason</h4>
-                <p className="text-sm text-gray-700">{selectedIssue.comment}</p>
+                <p className="text-sm text-gray-700">
+                  {selectedIssue.comment || 'No reason provided'}
+                </p>
               </div>
             )}
             
             {/* Super Admin's Approval Comment */}
-            {selectedIssue.status === 'Issue approved by Super Admin' && selectedIssue.approvalComment && (
+            {selectedIssue.status === 'Issue approved by Super Admin' && selectedIssue.comment && (
               <div className="p-4 bg-green-50 border-l-4 border-green-400 rounded-r">
                 <h4 className="text-sm font-medium text-green-800 mb-1">Approval Note</h4>
-                <p className="text-sm text-gray-700">{selectedIssue.approvalComment}</p>
+                <p className="text-sm text-gray-700">{selectedIssue.comment}</p>
+              </div>
+            )}
+            
+            {/* DC's Approval Status */}
+            {selectedIssue.status === ISSUE_STATUS.DC_APPROVED && (
+              <div className="p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r">
+                <h4 className="text-sm font-medium text-blue-800 mb-1">DC Approval Status</h4>
+                <p className="text-sm text-gray-700">This issue has been approved by DC and is pending further action.</p>
               </div>
             )}
           </div>
@@ -200,7 +213,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                     </div>
                   </div>
                   
-                  {selectedIssue.status === 'Issue approved by DC' && (
+                  {selectedIssue.status === ISSUE_STATUS.DC_APPROVED && (
                     <div className="flex items-start">
                       <div className="flex-shrink-0">
                         <div className="flex items-center justify-center h-6 w-6 rounded-full bg-green-100">
@@ -214,7 +227,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                     </div>
                   )}
 
-                  {selectedIssue.status === 'Rejected by Super Admin' && (
+                  {selectedIssue.status === ISSUE_STATUS.DC_REJECTED && (
                     <div className="flex items-start">
                       <div className="flex-shrink-0">
                         <div className="flex items-center justify-center h-6 w-6 rounded-full bg-red-100">
@@ -230,8 +243,8 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                 </div>
               </div>
 
-              {/* Actions */}
-              {(selectedIssue.status === 'Issue approved by DC' || selectedIssue.status === 'Approved by DC') && (
+              {/* Actions - Only show for DC approved issues */}
+              {(selectedIssue.status === ISSUE_STATUS.DC_APPROVED) && (
                 <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                   <h3 className="text-sm font-medium text-gray-500">Actions</h3>
                   <div className="space-y-2">
@@ -258,6 +271,16 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                       Reject Issue
                     </button>
                   </div>
+                </div>
+              )}
+              
+              {/* Show message for rejected issues */}
+              {selectedIssue.status === ISSUE_STATUS.DC_REJECTED && (
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium text-yellow-800">This issue has been rejected by DC</h3>
+                  <p className="mt-1 text-sm text-yellow-700">
+                    {selectedIssue.comment || 'No reason provided for rejection.'}
+                  </p>
                 </div>
               )}
             </div>

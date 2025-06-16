@@ -220,7 +220,7 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
       } else {
         // For new issues, send all data
         response = await axios.post(
-          'http://localhost:5000/api/issues/submit',
+          'http://localhost:5000/api/issues',
           form,
           {
             headers: {

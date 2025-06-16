@@ -4,8 +4,8 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import RejectCommentModal from './RejectCommentModal';
 import { Issue } from '../../types/issue';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
 import RootIssueDetails from './RootIssueDetails';
-
 
 const IssuePanel: React.FC = () => {
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -48,11 +48,10 @@ const IssuePanel: React.FC = () => {
         console.warn('No issues array in response');
         setIssues([]);
       }
-  } catch (error) {
-    console.error('Error fetching issues:', error);
-  }
-};
-
+    } catch (error) {
+      console.error('Error fetching issues:', error);
+    }
+  };
 
   const handleApproveIssue = async (issue: Issue, comment: string = '') => {
     try {
@@ -63,7 +62,7 @@ const IssuePanel: React.FC = () => {
       }
 
       const response = await axios.post(
-        `http://localhost:5000/api/issues/${issue.id}/approve/root`,
+        `http://localhost:5000/api/issues/${issue.id}/approve-root`,
         { comment: comment || undefined },
         {
           headers: {
@@ -95,7 +94,7 @@ const IssuePanel: React.FC = () => {
   };
 
   const approveIssue = (issue: Issue) => {
-    if (issue.status === 'Approved by DC' || issue.status === 'Issue approved by DC') {
+    if (issue.status === ISSUE_STATUS.DC_APPROVED) {
       openApproveModal(issue);
     } else {
       toast.error('Issue must be approved by DC first');
@@ -115,14 +114,15 @@ const IssuePanel: React.FC = () => {
         toast.error('Please provide a reason for rejection');
         return;
       }
-      
+
       // Send the comment with the rejection request
       await axios.post(
-        `http://localhost:5000/api/issues/${issueId}/reject/root`,
+        `http://localhost:5000/api/issues/${issueId}/reject-root`,
         { comment: rejectComment },
         {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         }
       );
@@ -130,23 +130,23 @@ const IssuePanel: React.FC = () => {
       // Clear form and close modal
       setRejectComment('');
       setShowCommentModal(false);
-      
+
       // Refresh issues to show updated status and comment
       await fetchIssues();
-      
+
       toast.success('Issue rejected successfully');
     } catch (error: any) {
       console.error('Error rejecting issue:', error);
       toast.error(error?.response?.data?.message || 'Error rejecting issue');
     }
   };
-  
+
   const openRejectCommentModal = (issue: Issue) => {
     setCommentIssue(issue);
     setRejectComment('');
     setShowCommentModal(true);
   };
-  
+
   const showComment = (issue: Issue) => {
     setCommentIssue(issue);
     setRejectComment(issue.comment || '');
@@ -155,16 +155,13 @@ const IssuePanel: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Pending':
+      case ISSUE_STATUS.PENDING:
         return 'bg-yellow-100 text-yellow-800';
-      case 'Issue approved by DC':
+      case ISSUE_STATUS.DC_APPROVED:
         return 'bg-blue-100 text-blue-800';
-      case 'Issue approved by Super Admin':
+      case ISSUE_STATUS.RESOLVED:
         return 'bg-purple-100 text-purple-800';
-      case 'Issue assigned by Super User':
-        return 'bg-green-100 text-green-800';
-      case 'Rejected by Super Admin':
-      case 'Rejected by DC':
+      case ISSUE_STATUS.DC_REJECTED:
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -187,7 +184,7 @@ const IssuePanel: React.FC = () => {
   // Group issues by date
   const groupIssuesByDate = (issues: Issue[]) => {
     const groups: Record<string, Issue[]> = {};
-    
+
     issues.forEach(issue => {
       const date = new Date(issue.submittedAt).toLocaleDateString();
       if (!groups[date]) {
@@ -195,30 +192,30 @@ const IssuePanel: React.FC = () => {
       }
       groups[date].push(issue);
     });
-    
+
     return Object.entries(groups);
   };
 
   // Sort and group the issues
   const sortedAndGroupedIssues = groupIssuesByDate(
     [...issues].sort((a, b) => {
-      // Only sort for Pending or Issue approved by DC status
+      // Only sort for Pending or DC approved status
       const statusA = a.status;
       const statusB = b.status;
-      const shouldSortA = statusA === 'Pending' || statusA === 'Issue approved by DC';
-      const shouldSortB = statusB === 'Pending' || statusB === 'Issue approved by DC';
-      
+      const shouldSortA = statusA === ISSUE_STATUS.PENDING || statusA === ISSUE_STATUS.DC_APPROVED;
+      const shouldSortB = statusB === ISSUE_STATUS.PENDING || statusB === ISSUE_STATUS.DC_APPROVED;
+
       if (!shouldSortA && !shouldSortB) return 0;
       if (!shouldSortA) return 1;
       if (!shouldSortB) return -1;
-      
+
       // Priority order: High > Medium > Low
       const priorityOrder: Record<string, number> = {
         'High': 1,
         'Medium': 2,
         'Low': 3
       };
-      
+
       return priorityOrder[a.priorityLevel] - priorityOrder[b.priorityLevel];
     })
   );
@@ -251,57 +248,57 @@ const IssuePanel: React.FC = () => {
                 </th>
               </tr>
             </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {sortedAndGroupedIssues.map(([date, dateIssues]) => (
-              <React.Fragment key={date}>
-                <tr className="bg-gray-50 sticky top-10 z-5">
-                  <td colSpan={6} className="px-6 py-2 text-sm font-medium text-gray-900 bg-gray-50">
-                    {date}
-                  </td>
-                </tr>
-                {dateIssues.map((issue) => (
-                  <tr key={issue.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                      #{issue.id}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                      {issue.complaintType}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)} whitespace-nowrap`}>
-                        {issue.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priorityLevel)} whitespace-nowrap`}>
-                        {issue.priorityLevel}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                      {issue.location}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => {
-                            setSelectedIssue(issue);
-                            setShowModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="View Details"
-                        >
-                          <FiEye size={18} />
-                        </button>
-                      </div>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {sortedAndGroupedIssues.map(([date, dateIssues]) => (
+                <React.Fragment key={date}>
+                  <tr className="bg-gray-50 sticky top-10 z-5">
+                    <td colSpan={6} className="px-6 py-2 text-sm font-medium text-gray-900 bg-gray-50">
+                      {date}
                     </td>
                   </tr>
-                ))}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                  {dateIssues.map((issue) => (
+                    <tr key={issue.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
+                        #{issue.id}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                        {issue.complaintType}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)} whitespace-nowrap`}>
+                          {issue.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priorityLevel)} whitespace-nowrap`}>
+                          {issue.priorityLevel}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                        {issue.location}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedIssue(issue);
+                              setShowModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="View Details"
+                          >
+                            <FiEye size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
 
       {/* Issue Details Modal */}
       {selectedIssue && (
@@ -309,15 +306,15 @@ const IssuePanel: React.FC = () => {
           selectedIssue={{
             ...selectedIssue,
             // Pass comment as dcRejectionReason when status is 'Rejected by DC'
-            ...(selectedIssue.status === 'Rejected by DC' && {
+            ...(selectedIssue.status === ISSUE_STATUS.DC_REJECTED && {
               dcRejectionReason: selectedIssue.comment
             })
           }}
           setSelectedIssue={setSelectedIssue}
           showModal={showModal}
           setShowModal={setShowModal}
-          handleApproveIssue={() => approveIssue(selectedIssue)}
-          openRejectCommentModal={openRejectCommentModal}
+          handleApproveIssue={() => openApproveModal(selectedIssue)}
+          openRejectCommentModal={() => openRejectCommentModal(selectedIssue)}
           getStatusColor={getStatusColor}
           getPriorityColor={getPriorityColor}
         />

@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const auth = require('../middleware/auth');
-const issueController = require('../controllers/issueController');
+const { protect } = require('../middleware/auth');
+const issueController = require('../controllers/issue/issueController');
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -17,41 +17,50 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Submit new issue
-router.post('/submit', auth, upload.single('attachment'), issueController.submitIssue);
+// Apply protect middleware to all routes
+router.use(protect);
 
-// Get all issues
-router.get('/', auth, issueController.getAllIssues);
+// Issue submission
+router.post('/', upload.single('attachment'), issueController.submitIssue);
 
-// DC approval routes
-router.post('/:issueId/approve/dc', auth, issueController.approveByDC);
-router.post('/:issueId/reject/dc', auth, issueController.rejectByDC);
+// Get all issues (filtered by user's role and district)
+router.get('/', issueController.getAllIssues);
 
-// Super User approval route
-router.post('/:issueId/approve/superuser', auth, issueController.approveBySuperUser);
+// Get issue details by ID
+router.get('/:id', issueController.getIssueDetails);
 
-// Super Admin approval route
-router.post('/:issueId/approve/superadmin', auth, issueController.approveBySuperAdmin);
+// Update issue
+router.put('/:id', issueController.updateIssue);
 
-// Root approval routes
-router.post('/:issueId/approve/root', auth, issueController.approveByRoot);
-router.post('/:issueId/reject/root', auth, issueController.rejectByRoot);
+// Delete issue
+router.delete('/:id', issueController.deleteIssue);
 
-// Get Super Admin Approved Issues
-router.get('/superadmin/approvals', auth, issueController.getSuperAdminApprovedIssues);
+// Issue approval routes
+// DC approval
+router.post('/:issueId/approve-dc', issueController.approveByDC);
+router.post('/:issueId/reject-dc', issueController.rejectByDC);
 
-// Update issue by ID (with file upload support)
-router.put('/:id', auth, upload.single('attachment'), issueController.updateIssue);
+// Super Admin approval (combining superuser and superadmin into one role)
+router.post('/:issueId/approve-superadmin', issueController.approveBySuperUser);
+router.post('/:issueId/reject-superadmin', issueController.rejectByRoot);
 
-// Delete issue by ID
-router.delete('/:id', auth, issueController.deleteIssue);
+// Root approval (same as super admin for now)
+router.post('/:issueId/approve-root', issueController.approveByRoot);
+router.post('/:issueId/reject-root', issueController.rejectByRoot);
 
-// Technical Officer endpoints
-router.get('/technicalofficer/assigned', auth, issueController.getTechnicalOfficerAssignedIssues);
-router.post('/:issueId/technicalofficer/update', auth, issueController.updateTechnicalOfficerIssue);
+// Technical Officer routes
+router.get('/technicalofficer/assigned', issueController.getTechnicalOfficerAssignedIssues);
+router.post('/:issueId/assign-technician', issueController.assignTechnicalOfficer);
+router.put('/:issueId/status', issueController.updateTechnicalOfficerIssue);
 
-// Review endpoints
-router.get('/review', auth, issueController.getIssuesForReview);
-router.post('/:issueId/confirm-review', auth, issueController.confirmReview);
+// Review routes
+router.get('/review/pending', issueController.getIssuesForReview);
+router.post('/:issueId/review', issueController.confirmReview);
+
+// Reopen issue (for Subject Clerk)
+router.post('/:issueId/reopen', issueController.reopenIssue);
+
+// Get all technical officers
+router.get('/technical-officers/all', issueController.getTechnicalOfficers);
 
 module.exports = router;

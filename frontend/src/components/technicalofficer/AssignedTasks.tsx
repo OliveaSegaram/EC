@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import { FiEdit } from 'react-icons/fi';
+import api from '../../services/api';
 
 interface Issue {
   id: number;
@@ -13,6 +13,14 @@ interface Issue {
   status: string;
   submittedAt: string;
   comment?: string;
+  attachment?: string;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  issues?: T[];
+  [key: string]: any;
 }
 
 const AssignedTasks = () => {
@@ -20,6 +28,11 @@ const AssignedTasks = () => {
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [comment, setComment] = useState('');
+  interface UpdateRequestData {
+    comment: string;
+    resolutionDetails?: string;
+  }
+
   const [status, setStatus] = useState('');
 
   useEffect(() => {
@@ -28,13 +41,12 @@ const AssignedTasks = () => {
 
   const fetchAssignedIssues = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/issues/technicalofficer/assigned', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setIssues(response.data);
-    } catch (error: any) {
-      toast.error('Failed to fetch assigned tasks');
+      const response = await api.get('/assignments/my-issues');
+      console.log('Assigned tasks response:', response.data);
+      setIssues(response.data.issues || []);
+    } catch (error) {
+      console.error('Error fetching assigned tasks:', error);
+      // Error is already handled by the API interceptor
     }
   };
 
@@ -47,18 +59,61 @@ const AssignedTasks = () => {
 
   const handleUpdateStatus = async () => {
     if (!selectedIssue) return;
+
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `http://localhost:5000/api/issues/${selectedIssue.id}/technicalofficer/update`,
-        { status, comment },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success('Status updated successfully');
+      let endpoint = '';
+      let requestData: UpdateRequestData = { comment };
+      
+      // Determine which endpoint to use based on status
+      if (status === 'In Progress') {
+        endpoint = `/assignments/${selectedIssue.id}/start`;
+      } else if (status === 'Resolved') {
+        endpoint = `/assignments/${selectedIssue.id}/resolve`;
+        requestData = { ...requestData, resolutionDetails: comment };
+      } else {
+        throw new Error('Invalid status');
+      }
+
+      console.log('Sending request to:', endpoint);
+      console.log('Request data:', requestData);
+
+      const response = await api.post<ApiResponse<Issue>>(endpoint, requestData);
+      
+      console.log('Update response:', response.data);
+      toast.success(response.data.message || 'Status updated successfully');
       setShowModal(false);
       fetchAssignedIssues();
     } catch (error: any) {
-      toast.error('Failed to update status');
+      console.error('Error updating status:', error);
+      
+      // Handle different types of errors
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Error response data:', error.response.data);
+        console.error('Error status:', error.response.status);
+        console.error('Error headers:', error.response.headers);
+        
+        if (error.response.status === 401 || error.response.status === 403) {
+          toast.error('Session expired. Please log in again.');
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+          return;
+        }
+        
+        const errorMessage = error.response.data?.message || 
+                           error.response.statusText || 
+                           'Failed to update status';
+        toast.error(errorMessage);
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('No response received:', error.request);
+        toast.error('No response from server. Please check your connection.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Error setting up request:', error.message);
+        toast.error(error.message || 'Failed to update status');
+      }
     }
   };
 
@@ -138,6 +193,22 @@ const AssignedTasks = () => {
                 <h4 className="text-sm font-medium text-gray-500">Description</h4>
                 <p className="mt-1 text-gray-700">{selectedIssue.description}</p>
               </div>
+              {selectedIssue.attachment && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium text-gray-500 mb-2">Attachment</h4>
+                  <a 
+                    href={`http://localhost:5000/${selectedIssue.attachment}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 underline flex items-center"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    View Attachment
+                  </a>
+                </div>
+              )}
               <div>
                 <h4 className="text-sm font-medium text-gray-500">Comment</h4>
                 <textarea

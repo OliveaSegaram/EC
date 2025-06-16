@@ -22,8 +22,14 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     },
     location: {
-      type: DataTypes.STRING,
-      allowNull: true
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Districts',
+        key: 'id'
+      },
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE'
     },
     underWarranty: {
       type: DataTypes.BOOLEAN, 
@@ -45,6 +51,28 @@ module.exports = (sequelize, DataTypes) => {
     needsReview: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
+    },
+    assignedTo: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Users',
+        key: 'id'
+      },
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE'
+    },
+    // User who submitted the issue
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Users',
+        key: 'id'
+      },
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+      field: 'userId'  // Explicitly set the field name
     },
     // We'll use the existing comment field for approval comments
     // This is a virtual getter for backward compatibility
@@ -96,12 +124,26 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
 
-  // Define association with District
+  // Define associations
   Issue.associate = function(models) {
+    // Association with District
     Issue.belongsTo(models.District, {
       foreignKey: 'location',
       targetKey: 'id',
       as: 'districtInfo'
+    });
+    
+    // Association with User (assigned technical officer)
+    Issue.belongsTo(models.User, {
+      foreignKey: 'assignedTo',
+      as: 'assignedTechnicalOfficer'
+    });
+
+    // Association with User (submitter)
+    Issue.belongsTo(models.User, {
+      foreignKey: 'userId',
+      as: 'submitter',
+      onDelete: 'CASCADE'
     });
   };
 

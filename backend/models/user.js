@@ -66,7 +66,12 @@ module.exports = (sequelize, DataTypes) => {
       ]
     });
   
-    // No associations defined to avoid database schema changes
-    return User;
+    User.associate = (models) => {
+    User.belongsTo(models.Role, {
+      foreignKey: 'roleId',
+      as: 'role'
+    });
   };
-  
+
+  return User;
+};

@@ -386,6 +386,7 @@ const ClerkDashboard = () => {
                   currentPage={currentIssuesPage}
                   setCurrentPage={setCurrentIssuesPage}
                   itemsPerPage={itemsPerIssuesPage}
+                  fetchIssues={fetchIssues}
                 />
               </>
             )}

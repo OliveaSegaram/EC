@@ -1,7 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { FiCheckCircle, FiLayers, FiMoreVertical, FiThumbsUp, FiEye } from 'react-icons/fi';
+import React, { useState, useEffect, useRef } from 'react';
+import { FiCheckCircle, FiLayers, FiMoreVertical, FiThumbsUp, FiEye, FiUser, FiChevronDown } from 'react-icons/fi';
 import { CiCircleList, CiWallet, CiClock1 } from 'react-icons/ci';
 import axios from 'axios';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
+
+interface TechnicalOfficer {
+  id: number;
+  username: string;
+  email: string;
+}
 
 interface User {
   id: number;
@@ -33,10 +40,14 @@ interface Issue {
   }>;
 }
 
-const Status = () => {
+const Dashboard = () => {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [technicalOfficers, setTechnicalOfficers] = useState<TechnicalOfficer[]>([]);
+  const [selectedOfficer, setSelectedOfficer] = useState<TechnicalOfficer | null>(null);
+  const [showOfficerDropdown, setShowOfficerDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [overviewStats, setOverviewStats] = useState({
     totalIssues: 0,
     dcApprovedIssues: 0,
@@ -45,7 +56,42 @@ const Status = () => {
 
   useEffect(() => {
     fetchIssues();
+    fetchTechnicalOfficers();
+    
+    // Close dropdown when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowOfficerDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
+  
+  const fetchTechnicalOfficers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+      
+      const response = await axios.get('http://localhost:5000/api/issues/technical-officers/all', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      console.log('Technical officers response:', response.data);
+      
+      if (response.data && response.data.technicalOfficers) {
+        setTechnicalOfficers(response.data.technicalOfficers);
+      }
+    } catch (error) {
+      console.error('Error fetching technical officers:', error);
+    }
+  };
 
   const fetchIssues = async () => {
     try {
@@ -76,9 +122,9 @@ const Status = () => {
         return;
       }
 
-      // Filter issues to show only 'Issue approved by Super Admin' in the overview
+      // Filter issues to show only approved by Super Admin in the overview
       const approvedIssues = response.data.issues.filter((issue: Issue) => 
-        issue.status === 'Issue approved by Super Admin'
+        issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED
       );
       
       setIssues(approvedIssues);
@@ -87,10 +133,10 @@ const Status = () => {
       const allIssues = response.data.issues;
       setOverviewStats({
         totalIssues: allIssues.length,
-        dcApprovedIssues: allIssues.filter((issue: Issue) => issue.status === 'DC Approved').length,
+        dcApprovedIssues: allIssues.filter((issue: Issue) => issue.status === ISSUE_STATUS.DC_APPROVED).length,
         superUserApprovedIssues: allIssues.filter((issue: Issue) => 
-          issue.status === 'Issue approved by Super Admin' || 
-          issue.status === 'Issue assigned by Super User'
+          issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED || 
+          issue.status === ISSUE_STATUS.ASSIGNED
         ).length,
       });
     } catch (error: any) {
@@ -108,6 +154,11 @@ const Status = () => {
 
   const handleAssignIssue = async (issueId: number) => {
     try {
+      if (!selectedOfficer) {
+        alert('Please select a technical officer');
+        return;
+      }
+
       const token = localStorage.getItem('token');
       if (!token) {
         console.error('No authentication token found');
@@ -115,13 +166,13 @@ const Status = () => {
       }
 
       // Show confirmation dialog
-      if (!window.confirm('Are you sure you want to assign this issue to a technician?')) {
+      if (!window.confirm(`Are you sure you want to assign this issue to ${selectedOfficer.username}?`)) {
         return;
       }
 
-      const response = await axios.put(
-        `http://localhost:5000/api/issues/${issueId}/assign`,
-        { status: 'Assigned to Technician' },
+      const response = await axios.post(
+        `http://localhost:5000/api/issues/${issueId}/assign-technician`,
+        { technicalOfficerId: selectedOfficer.id },
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }
@@ -131,20 +182,30 @@ const Status = () => {
         // Update the issue in the local state
         setIssues(issues.map(issue => 
           issue.id === issueId 
-            ? { ...issue, status: 'Assigned to Technician' } 
+            ? { 
+                ...issue, 
+                status: 'Assigned to Technician',
+                assignedTo: selectedOfficer
+              } 
             : issue
         ));
         
-        // Close the modal
+        // Close the modal and reset selection
         setShowViewModal(false);
+        setSelectedOfficer(null);
         
         // Show success message
-        alert('Issue assigned to technician successfully');
+        alert(`Issue assigned to ${selectedOfficer.username} successfully`);
       }
     } catch (error) {
       console.error('Error assigning issue:', error);
       alert('Failed to assign issue. Please try again.');
     }
+  };
+  
+  const handleOfficerSelect = (officer: TechnicalOfficer) => {
+    setSelectedOfficer(officer);
+    setShowOfficerDropdown(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -385,14 +446,69 @@ const Status = () => {
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => handleAssignIssue(selectedIssue.id)}
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gradient-to-r from-purple-700 to-purple-900 hover:from-purple-800 hover:to-purple-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                >
-                  Assign to Technician
-                </button>
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="mb-4">
+                  <label htmlFor="technical-officer" className="block text-sm font-medium text-gray-700 mb-1">
+                    Assign to Technical Officer
+                  </label>
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowOfficerDropdown(!showOfficerDropdown)}
+                      className="relative w-full bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-default focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    >
+                      <span className="flex items-center">
+                        <FiUser className="flex-shrink-0 h-5 w-5 text-gray-400" />
+                        <span className="ml-3 block truncate">
+                          {selectedOfficer ? selectedOfficer.username : 'Select a technical officer'}
+                        </span>
+                      </span>
+                      <span className="ml-3 absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                        <FiChevronDown className="h-5 w-5 text-gray-400" />
+                      </span>
+                    </button>
+                    
+                    {showOfficerDropdown && (
+                      <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-56 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                        {technicalOfficers.length > 0 ? (
+                          technicalOfficers.map((officer) => (
+                            <div
+                              key={officer.id}
+                              className={`${
+                                selectedOfficer?.id === officer.id ? 'bg-purple-100 text-purple-900' : 'text-gray-900'
+                              } cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-purple-50`}
+                              onClick={() => handleOfficerSelect(officer)}
+                            >
+                              <div className="flex items-center">
+                                <FiUser className="flex-shrink-0 h-5 w-5 text-gray-400" />
+                                <span className="ml-3 block font-normal truncate">
+                                  {officer.username} ({officer.email})
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-gray-500 py-2 pl-3">No technical officers found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleAssignIssue(selectedIssue.id)}
+                    disabled={!selectedOfficer}
+                    className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${
+                      selectedOfficer 
+                        ? 'bg-gradient-to-r from-purple-700 to-purple-900 hover:from-purple-800 hover:to-purple-900' 
+                        : 'bg-gray-300 cursor-not-allowed'
+                    }`}
+                  >
+                    Assign to {selectedOfficer ? selectedOfficer.username.split(' ')[0] : 'Technician'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -402,4 +518,4 @@ const Status = () => {
   );
 };
 
-export default Status; 
+export default Dashboard; 

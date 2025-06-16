@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  FiHome,
   FiClipboard,
   FiLogOut,
   FiBell,
@@ -11,12 +10,87 @@ import { useAppContext } from '../../provider/AppContext';
 import userAvatar from '../../assets/icons/login/User.svg';
 import AssignedTasks from '../../components/technicalofficer/AssignedTasks';
 
+interface UserProfile {
+  username: string;
+  email: string;
+  role: string;
+}
+
 const TechnicalOfficerDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setIsLoggedIn } = useAppContext();
+  const { setIsLoggedIn, backendUrl } = useAppContext();
 
   const [activeTab, setActiveTab] = useState<'AssignedTasks'>('AssignedTasks');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user profile on component mount and when token changes
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
+        }
+
+        const response = await fetch(`${backendUrl}/auth/user-profile`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to fetch user profile');
+        }
+
+        const data = await response.json();
+        
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setUserProfile({
+            username: data.username || data.email?.split('@')[0] || 'User',
+            email: data.email || '',
+            role: data.role || 'Technical Officer'
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        if (error instanceof Error && (error.message.includes('401') || error.message.includes('403'))) {
+          localStorage.removeItem('token');
+          setIsLoggedIn(false);
+          navigate('/login');
+        }
+      }
+    };
+
+    fetchUserProfile();
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, setIsLoggedIn, backendUrl]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleTabClick = (tabKey: string) => {
     navigate(`${location.pathname}#${tabKey}`);
@@ -62,14 +136,34 @@ const TechnicalOfficerDashboard = () => {
           <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">
             Technical Officer Dashboard
           </h1>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
             <FiBell className="text-gray-700 cursor-pointer" size={18} />
-            <span className="text-gray-700 text-sm">Technical Officer</span>
-            <img
-              src={userAvatar}
-              alt="User Avatar"
-              className="rounded-full w-8 h-8"
-            />
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <img
+                  src={userAvatar}
+                  alt="User Avatar"
+                  className="w-10 h-10 rounded-full cursor-pointer"
+                  onClick={() => setShowDropdown(!showDropdown)}
+                />
+                {showDropdown && (
+                  <div 
+                    ref={dropdownRef}
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
+                  >
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      <FiLogOut className="mr-2" size={16} /> Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+              <span className="text-sm font-medium text-gray-900">
+                {userProfile?.username || 'Technical Officer'}
+              </span>
+            </div>
           </div>
         </div>
       </div>

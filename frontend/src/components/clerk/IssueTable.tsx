@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiEdit2, FiTrash2, FiEye, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import axios from 'axios';
+import { FiEdit2, FiTrash2, FiEye, FiChevronLeft, FiChevronRight, FiRefreshCw } from 'react-icons/fi';
+import axios, { AxiosError } from 'axios';
+import { toast } from 'react-toastify';
 import IssueDetailsModal from './IssueDetailsModal';
 
 interface Issue {
@@ -28,6 +29,7 @@ interface IssueTableProps {
   currentPage: number;
   setCurrentPage: (page: number) => void;
   itemsPerPage: number;
+  fetchIssues?: () => Promise<void>;
 }
 
 const IssueTable: React.FC<IssueTableProps> = ({
@@ -41,6 +43,7 @@ const IssueTable: React.FC<IssueTableProps> = ({
   currentPage,
   setCurrentPage,
   itemsPerPage,
+  fetchIssues,
 }) => {
   const [filteredIssues, setFilteredIssues] = useState<Issue[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -48,6 +51,39 @@ const IssueTable: React.FC<IssueTableProps> = ({
   const [loadingDistricts, setLoadingDistricts] = useState(true);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
+  
+  // Handle reopening an issue
+  const handleReopenIssue = async (issueId: number) => {
+    if (!window.confirm('Are you sure you want to reopen this issue?')) return;
+    
+    setIsReopening(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `http://localhost:5000/api/issues/${issueId}/reopen`,
+        { comment: 'Reopened by Subject Clerk' },
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+      
+      toast.success('Issue reopened successfully');
+      // Refresh the issues list
+      if (fetchIssues) {
+        await fetchIssues();
+      }
+      setShowDetailsModal(false);
+    } catch (error: unknown) {
+      console.error('Error reopening issue:', error);
+      const errorMessage = error instanceof AxiosError 
+        ? error.response?.data?.message || 'Failed to reopen issue'
+        : 'An unexpected error occurred';
+      toast.error(errorMessage);
+    } finally {
+      setIsReopening(false);
+    }
+  };
 
   // Filter issues based on status
   useEffect(() => {
@@ -328,6 +364,7 @@ const IssueTable: React.FC<IssueTableProps> = ({
         <IssueDetailsModal
           issue={selectedIssue}
           onClose={() => setShowDetailsModal(false)}
+          onReopen={handleReopenIssue}
           getStatusColor={getStatusColor}
           getPriorityColor={getPriorityColor}
         />

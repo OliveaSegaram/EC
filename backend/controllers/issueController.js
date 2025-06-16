@@ -139,16 +139,24 @@ exports.getAllIssues = async (req, res) => {
           as: 'districtInfo',
           attributes: ['name'],
           required: false // LEFT JOIN
+        },
+        {
+          model: User,
+          as: 'assignedTechnicalOfficer',
+          attributes: ['id', 'username', 'email'],
+          required: false // LEFT JOIN
         }
       ]
     });
     
-    // Process the issues to include the district name
+    // Process the issues to include the district name and ensure comment is included
     const processedIssues = issues.map(issue => {
       const issueJson = issue.toJSON();
       // If we have district info, use the district name, otherwise use the location as is
       issueJson.location = issueJson.districtInfo ? issueJson.districtInfo.name : issueJson.location;
-      // Remove the nested districtInfo object
+      // Ensure comment is included (might be null/undefined)
+      issueJson.comment = issueJson.comment || '';
+      // Remove the nested objects
       delete issueJson.districtInfo;
       return issueJson;
     });
@@ -467,6 +475,7 @@ exports.getSuperAdminApprovedIssues = async (req, res) => {
                 priorityLevel: issue.priorityLevel,
                 status: issue.status,
                 location: location,
+                comment: issue.comment,  
                 submittedAt: issue.submittedAt,
                 updatedAt: issue.updatedAt,
                 userId: issue.userId,
@@ -492,40 +501,152 @@ exports.getSuperAdminApprovedIssues = async (req, res) => {
 // Get assigned issues for Technical Officer
 exports.getTechnicalOfficerAssignedIssues = async (req, res) => {
   try {
-    // Fetch issues assigned to technical officer or that have been updated by them
+    console.log('\n=== Fetching assigned issues ===');
+    console.log('Technical officer ID:', req.user.userId);
+    
+    // Get the current user's details
+    const currentUser = await User.findByPk(req.user.userId, {
+      attributes: ['id', 'username', 'email'],
+      include: [{
+        model: Role,
+        as: 'role',
+        attributes: ['name']
+      }],
+      raw: true,
+      nest: true
+    });
+    
+    if (!currentUser) {
+      console.error('Technical officer user not found');
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    console.log('👤 Current user:', currentUser.username, `(Role: ${currentUser.role?.name || 'unknown'})`);
+    
+    // Check if user has permission to view assigned issues
+    const allowedRoles = ['technical_officer', 'admin', 'super_admin', 'root'];
+    if (!allowedRoles.includes(currentUser.role?.name)) {
+      console.log('User does not have permission to view assigned issues');
+      return res.status(403).json({ 
+        success: false,
+        message: 'You do not have permission to view assigned issues' 
+      });
+    }
+    
+    // Get all issues assigned to this technical officer
     const assignedIssues = await Issue.findAll({
       where: {
-        status: ['Issue assigned by Super User', 'In Progress', 'Resolved']
+        assignedTo: currentUser.id,
+        status: {
+          [Op.in]: ['Assigned to Technician', 'In Progress', 'Resolved', 'Pending Review']
+        }
       },
-      order: [['updatedAt', 'DESC']]
+      order: [['updatedAt', 'DESC']],
+      include: [
+        {
+          model: District,
+          as: 'districtInfo',
+          attributes: ['name'],
+          required: false
+        },
+        {
+          model: User,
+          as: 'assignedTechnicalOfficer',
+          attributes: ['id', 'username', 'email'],
+          required: false
+        }
+      ]
     });
-    res.json(assignedIssues);
+    
+    console.log(`Found ${assignedIssues.length} issues assigned to ${currentUser.username}`);
+    
+    // Process the issues to include the district name
+    const processedIssues = assignedIssues.map(issue => {
+      const issueJson = issue.toJSON();
+      // If we have district info, use the district name, otherwise use the location as is
+      issueJson.location = issueJson.districtInfo ? issueJson.districtInfo.name : issueJson.location;
+      // Ensure comment is included (might be null/undefined)
+      issueJson.comment = issueJson.comment || '';
+      // Remove the nested objects
+      delete issueJson.districtInfo;
+      return issueJson;
+    });
+    
+    console.log('\n=== End of assigned issues fetch ===\n');
+    res.json(processedIssues);
   } catch (error) {
     console.error('Error fetching assigned issues:', error);
-    res.status(500).json({ message: 'Error fetching assigned issues', error: error.message });
+    res.status(500).json({ 
+      message: 'Error fetching assigned issues', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
 // Update issue status and comment by Technical Officer
 exports.updateTechnicalOfficerIssue = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
   try {
     const { issueId } = req.params;
     const { status, comment } = req.body;
-    const issue = await Issue.findByPk(issueId);
+    
+    // Find the issue within a transaction
+    const issue = await Issue.findByPk(issueId, { transaction });
+    
     if (!issue) {
-      return res.status(404).json({ message: 'Issue not found' });
+      await transaction.rollback();
+      return res.status(404).json({ 
+        success: false,
+        message: 'Issue not found' 
+      });
     }
+    
+    // Verify the issue is assigned to the current user
+    if (issue.assignedTo !== req.user.userId) {
+      await transaction.rollback();
+      return res.status(403).json({ 
+        success: false,
+        message: 'You are not assigned to this issue' 
+      });
+    }
+    
     // Allow only valid status updates
-    if (![ 'In Progress', 'Resolved' ].includes(status)) {
-      return res.status(400).json({ message: 'Invalid status update' });
+    if (!['In Progress', 'Resolved', 'Pending Review'].includes(status)) {
+      await transaction.rollback();
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid status update' 
+      });
     }
+    
     // Update the issue with needsReview flag to indicate it needs to be reviewed by Super Admin
     await issue.update({ 
-      status, 
+      status: status === 'Resolved' ? 'Pending Review' : status,
       comment,
-      needsReview: true 
+      needsReview: status === 'Resolved' 
+    }, { transaction });
+    
+    // Commit the transaction
+    await transaction.commit();
+    
+    // Get the updated issue with the assigned technical officer details
+    const updatedIssue = await Issue.findByPk(issueId, {
+      include: [
+        {
+          model: User,
+          as: 'assignedTechnicalOfficer',
+          attributes: ['id', 'username', 'email']
+        }
+      ]
     });
-    res.json({ message: 'Issue updated successfully' });
+    
+    res.json({ 
+      success: true,
+      message: 'Issue updated successfully',
+      issue: updatedIssue 
+    });
   } catch (error) {
     console.error('Error updating issue:', error);
     res.status(500).json({ message: 'Error updating issue', error: error.message });
@@ -535,27 +656,67 @@ exports.updateTechnicalOfficerIssue = async (req, res) => {
 // Get issues updated by Technical Officer for review by Super Admin
 exports.getIssuesForReview = async (req, res) => {
   try {
+    // Check if user has permission to review issues
+    const allowedRoles = ['admin', 'super_admin', 'root'];
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'You do not have permission to review issues' 
+      });
+    }
+    
     // Fetch issues that have been updated by Technical Officer and need review
     const issues = await Issue.findAll({
       where: { 
         needsReview: true,
-        status: ['In Progress', 'Resolved'] // Only get issues updated by Technical Officer
+        status: ['Pending Review'] // Only get issues that are pending review
       },
+      include: [
+        {
+          model: User,
+          as: 'assignedTechnicalOfficer',
+          attributes: ['id', 'username', 'email'],
+          required: false
+        },
+        {
+          model: District,
+          as: 'districtInfo',
+          attributes: ['name'],
+          required: false
+        }
+      ],
       order: [['updatedAt', 'DESC']]
     });
     
     // Format the issues for the review panel
-    const formattedIssues = issues.map(issue => ({
-      id: issue.id,
-      deviceId: issue.deviceId,
-      issueType: issue.complaintType,
-      lastUpdatedStatus: issue.status,
-      comment: issue.comment || 'No comment provided',
-      attachment: issue.attachment,
-      details: issue.description
-    }));
+    const formattedIssues = issues.map(issue => {
+      const issueJson = issue.toJSON();
+      return {
+        id: issueJson.id,
+        deviceId: issueJson.deviceId,
+        issueType: issueJson.complaintType,
+        status: issueJson.status,
+        priorityLevel: issueJson.priorityLevel,
+        location: issueJson.districtInfo ? issueJson.districtInfo.name : issueJson.location,
+        comment: issueJson.comment || 'No comment provided',
+        attachment: issueJson.attachment,
+        details: issueJson.description,
+        submittedAt: issueJson.submittedAt,
+        updatedAt: issueJson.updatedAt,
+        assignedTo: issueJson.assignedTechnicalOfficer
+          ? {
+              id: issueJson.assignedTechnicalOfficer.id,
+              username: issueJson.assignedTechnicalOfficer.username,
+              email: issueJson.assignedTechnicalOfficer.email
+            }
+          : null
+      };
+    });
     
-    res.json({ issues: formattedIssues });
+    res.json({ 
+      success: true,
+      issues: formattedIssues 
+    });
   } catch (error) {
     console.error('Error fetching issues for review:', error);
     res.status(500).json({ 
@@ -565,20 +726,234 @@ exports.getIssuesForReview = async (req, res) => {
   }
 };
 
-// Confirm review of an issue updated by Technical Officer
-exports.confirmReview = async (req, res) => {
+// Assign a technical officer to an issue
+exports.assignTechnicalOfficer = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
   try {
     const { issueId } = req.params;
-    const issue = await Issue.findByPk(issueId);
-    
+    const { technicalOfficerId } = req.body;
+
+    // Validate input
+    if (!technicalOfficerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Technical officer ID is required'
+      });
+    }
+
+    // Check if the issue exists
+    const issue = await Issue.findByPk(issueId, { transaction });
     if (!issue) {
-      return res.status(404).json({ message: 'Issue not found' });
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Issue not found'
+      });
+    }
+
+    // Get the technical officer's details
+    const technicalOfficer = await User.findByPk(technicalOfficerId, {
+      attributes: ['id', 'username', 'email', 'roleId'],
+      include: [{
+        model: Role,
+        as: 'role',
+        attributes: ['name']
+      }],
+      transaction
+    });
+    
+    if (!technicalOfficer) {
+      await transaction.rollback();
+      console.error('Technical officer not found with ID:', technicalOfficerId);
+      return res.status(404).json({
+        success: false,
+        message: 'Technical officer not found'
+      });
+    }
+
+    // Verify the user has a technical role
+    if (!['technical_officer', 'admin', 'super_admin', 'root'].includes(technicalOfficer.role?.name)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'The specified user is not a technical officer'
+      });
     }
     
-    // Mark the issue as reviewed
-    await issue.update({ needsReview: false });
+    console.log(` Assigning issue ${issue.id} to technical officer ${technicalOfficer.username}`);
     
-    res.json({ message: 'Issue review confirmed successfully' });
+    // Store the assignment in the assignedTo field and update status
+    const timestamp = new Date().toISOString();
+    const previousAssignee = issue.assignedTo;
+    
+    // Update the issue
+    await issue.update({
+      assignedTo: technicalOfficerId,
+      status: 'Assigned to Technician',
+      comment: `[ASSIGNED] Assigned to ${technicalOfficer.username} at ${timestamp}`
+    }, { transaction });
+    
+    // Commit the transaction
+    await transaction.commit();
+    
+    console.log(`Successfully assigned issue ${issue.id} to ${technicalOfficer.username}`);
+
+    // Get the updated issue with the assigned technical officer details
+    const updatedIssue = await Issue.findByPk(issueId, {
+      include: [
+        {
+          model: User,
+          as: 'assignedTechnicalOfficer',
+          attributes: ['id', 'username', 'email']
+        }
+      ]
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Issue assigned to ${technicalOfficer.username} successfully`,
+      issue: updatedIssue
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error assigning technical officer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error assigning technical officer',
+      error: error.message
+    });
+  }
+};
+
+// Get all technical officers
+exports.getTechnicalOfficers = async (req, res) => {
+  try {
+    console.log('Fetching technical officers...');
+    
+    // First, find the technical officer role
+    const techOfficerRole = await Role.findOne({
+      where: { name: 'technical_officer' }
+    });
+
+    if (!techOfficerRole) {
+      console.log('Technical officer role not found');
+      return res.status(404).json({
+        success: false,
+        message: 'Technical officer role not found'
+      });
+    }
+
+    console.log('Found technical officer role with ID:', techOfficerRole.id);
+    
+    // Find all users with the technical_officer role
+    const technicalOfficers = await User.findAll({
+      where: { roleId: techOfficerRole.id },
+      attributes: ['id', 'username', 'email']
+    });
+
+    console.log('Found technical officers:', technicalOfficers);
+
+    res.status(200).json({
+      success: true,
+      technicalOfficers
+    });
+  } catch (error) {
+    console.error('Error fetching technical officers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching technical officers',
+      error: error.message,
+      stack: error.stack
+    });
+  }
+};
+
+// Confirm review of an issue updated by Technical Officer
+exports.confirmReview = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const { issueId } = req.params;
+    const { action } = req.body; 
+    const { comment } = req.body; 
+    
+    // Check if user has permission to review issues
+    const allowedRoles = ['admin', 'super_admin', 'root'];
+    if (!allowedRoles.includes(req.user.role)) {
+      await transaction.rollback();
+      return res.status(403).json({ 
+        success: false,
+        message: 'You do not have permission to review issues' 
+      });
+    }
+    
+    // Find the issue within a transaction
+    const issue = await Issue.findByPk(issueId, { transaction });
+    
+    if (!issue) {
+      await transaction.rollback();
+      return res.status(404).json({ 
+        success: false,
+        message: 'Issue not found' 
+      });
+    }
+    
+    // Check if the issue is in a reviewable state
+    if (!issue.needsReview) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'This issue does not require review'
+      });
+    }
+    
+    // Update the issue based on the action
+    if (action === 'approve') {
+      // Mark the issue as completed
+      await issue.update({ 
+        status: 'Completed',
+        needsReview: false,
+        comment: comment 
+          ? `[APPROVED] ${comment}` 
+          : 'Issue resolved and approved'
+      }, { transaction });
+    } else if (action === 'reject') {
+      // Return the issue to the technical officer for further action
+      await issue.update({ 
+        status: 'In Progress',
+        needsReview: false,
+        comment: comment 
+          ? `[REJECTED] ${comment}` 
+          : 'Returned for further action'
+      }, { transaction });
+    } else {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid action. Must be either "approve" or "reject"'
+      });
+    }
+    
+    // Commit the transaction
+    await transaction.commit();
+    
+    // Get the updated issue with the assigned technical officer details
+    const updatedIssue = await Issue.findByPk(issueId, {
+      include: [
+        {
+          model: User,
+          as: 'assignedTechnicalOfficer',
+          attributes: ['id', 'username', 'email']
+        }
+      ]
+    });
+    
+    res.json({ 
+      success: true,
+      message: `Issue ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
+      issue: updatedIssue
+    });
   } catch (error) {
     console.error('Error confirming review:', error);
     res.status(500).json({ 
@@ -635,6 +1010,86 @@ exports.approveByRoot = async (req, res) => {
       error: error.message 
     });
   }
+};
+
+// Reopen issue (for Subject Clerk)
+exports.reopenIssue = async (req, res) => {
+    const transaction = await sequelize.transaction();
+    
+    try {
+        const { issueId } = req.params;
+        const { comment } = req.body;
+        const userId = req.user.userId;
+
+        // Find the issue within transaction
+        const issue = await Issue.findByPk(issueId, { transaction });
+        if (!issue) {
+            await transaction.rollback();
+            return res.status(404).json({ 
+                success: false,
+                message: 'Issue not found' 
+            });
+        }
+
+        // Check if the issue is in a state that can be reopened
+        if (!['Resolved', 'Completed'].includes(issue.status)) {
+            await transaction.rollback();
+            return res.status(400).json({ 
+                success: false,
+                message: 'Only resolved or completed issues can be reopened' 
+            });
+        }
+
+        // Get the current user's details for the comment
+        const user = await User.findByPk(userId, { 
+            attributes: ['username'],
+            transaction 
+        });
+
+        const username = user ? user.username : 'System';
+        const updatedComment = `[REOPENED by ${username}] ${comment || 'Issue reopened'}`;
+        
+        // Update the issue status and add a comment
+        await issue.update({
+            status: 'Reopened',
+            comment: updatedComment,
+            needsReview: true,
+            assignedTo: null // Reset assignedTo so it can be reassigned
+        }, { transaction });
+
+        // Commit the transaction
+        await transaction.commit();
+
+        // Get the updated issue with all necessary associations
+        const updatedIssue = await Issue.findByPk(issueId, {
+            include: [
+                {
+                    model: User,
+                    as: 'assignedTechnicalOfficer',
+                    attributes: ['id', 'username', 'email']
+                },
+                {
+                    model: District,
+                    as: 'districtInfo',
+                    attributes: ['name']
+                }
+            ]
+        });
+
+        res.json({ 
+            success: true,
+            message: 'Issue reopened successfully',
+            issue: updatedIssue
+        });
+    } catch (error) {
+        await transaction.rollback();
+        console.error('Error reopening issue:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error reopening issue',
+            error: error.message 
+        });
+    }
 };
 
 // Reject by Root

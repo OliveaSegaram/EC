@@ -1,0 +1,149 @@
+const { Issue, District, User, Role } = require('../../models');
+const { Op } = require('sequelize');
+
+// Get all issues (filtered by user's role and district if applicable)
+exports.getAllIssues = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const userDistrictId = req.query.userDistrict;
+    const userRole = req.user.role;
+    
+    let whereClause = {};
+    
+    // Define roles that can see all issues
+    const adminRoles = ['super_admin', 'super_user', 'technical_officer', 'root'];
+    
+    // If user has admin role, show all issues
+    if (adminRoles.includes(userRole)) {
+      console.log(`${userRole} user: Fetching all issues`);
+      
+    } 
+    // For subject_clerk and dc, filter by district
+    else if (['subject_clerk', 'dc'].includes(userRole) && userDistrictId) {
+      whereClause = {
+        [Op.or]: [
+          { location: userDistrictId.toString() },
+          //{ location: { [Op.like]: 'Colombo Head Office%' } }
+        ]
+      };
+      console.log(`${userRole} user: Fetching issues for district ID: ${userDistrictId}`);
+    } else {
+      console.error('No district filtering rules apply for this user role');
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    console.log('Searching for issues with filter:', whereClause);
+
+    const issues = await Issue.findAll({
+      where: whereClause,
+      order: [['submittedAt', 'DESC']],
+      include: [
+        {
+          model: District,
+          as: 'districtInfo',
+          attributes: ['name'],
+          required: false // LEFT JOIN
+        },
+        {
+          model: User,
+          as: 'assignedTechnicalOfficer',
+          attributes: ['id', 'username', 'email'],
+          required: false // LEFT JOIN
+        },
+        {
+          model: User,
+          as: 'submitter',
+          attributes: ['id', 'username', 'email'],
+          required: false // LEFT JOIN
+        }
+      ]
+    });
+    
+    // Process the issues to include the district name and ensure comment is included
+    const processedIssues = issues.map(issue => {
+      const issueJson = issue.toJSON();
+      // If we have district info, use the district name, otherwise use the location as is
+      issueJson.location = issueJson.districtInfo ? issueJson.districtInfo.name : issueJson.location;
+      // Ensure comment is included (might be null/undefined)
+      issueJson.comment = issueJson.comment || '';
+      // Remove the nested objects
+      delete issueJson.districtInfo;
+      return issueJson;
+    });
+    
+    console.log(`Found ${processedIssues.length} issues`);
+
+    res.json({ issues: processedIssues });
+  } catch (error) {
+    console.error('Error fetching issues:', error);
+    res.status(500).json({
+      message: 'Error fetching issues',
+      error: error.message
+    });
+  }
+};
+
+// Get issue details by ID
+exports.getIssueDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const issue = await Issue.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'assignedTechnicalOfficer',
+          attributes: ['id', 'username', 'email']
+        },
+        {
+          model: User,
+          as: 'submitter',
+          attributes: ['id', 'username', 'email']
+        },
+        {
+          model: District,
+          as: 'districtInfo',
+          attributes: ['id', 'name']
+        }
+      ]
+    });
+
+    if (!issue) {
+      return res.status(404).json({ message: 'Issue not found' });
+    }
+
+    res.status(200).json({ issue });
+  } catch (error) {
+    console.error('Error fetching issue details:', error);
+    return res.status(500).json({ message: 'Error fetching issue details', error: error.message });
+  }
+};
+
+// Get all technical officers
+exports.getTechnicalOfficers = async (req, res) => {
+  try {
+    // First, find the technical officer role ID
+    const techOfficerRole = await Role.findOne({
+      where: { name: 'technical_officer' },
+      attributes: ['id']
+    });
+
+    if (!techOfficerRole) {
+      return res.status(404).json({ message: 'Technical officer role not found' });
+    }
+
+    // Then find all users with that role ID
+    const technicalOfficers = await User.findAll({
+      where: { roleId: techOfficerRole.id },
+      attributes: ['id', 'username', 'email', 'empId']
+    });
+
+    res.status(200).json({ technicalOfficers });
+  } catch (error) {
+    console.error('Error fetching technical officers:', error);
+    res.status(500).json({
+      message: 'Error fetching technical officers',
+      error: error.message
+    });
+  }
+};

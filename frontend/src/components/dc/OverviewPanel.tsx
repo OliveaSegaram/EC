@@ -1,5 +1,6 @@
 import React from 'react';
 import { FiCheckCircle, FiXCircle, FiEye, FiMessageSquare, FiList, FiClock, FiCheck, FiAlertTriangle } from 'react-icons/fi';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 interface Issue {
   id: number;
@@ -33,8 +34,8 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
   showComment,
   setSelectedIssue,
   setShowModal,
-  getStatusColor,
-  getPriorityColor
+  getStatusColor,  // Keeping for backward compatibility
+  getPriorityColor // Keeping for backward compatibility
 }) => {
   // Sort issues by priority: High > Medium > Low
   const sortedIssues = [...issues].sort((a, b) => {
@@ -52,12 +53,14 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
     return getPriorityValue(a.priorityLevel) - getPriorityValue(b.priorityLevel);
   });
 
-  // Calculate statistics
-  const totalIssues = issues.length;
-  const pendingIssues = issues.filter(issue => issue.status === 'Pending').length;
-  const rejectedIssues = issues.filter(issue => 
-    issue.status.toLowerCase().includes('rejected')
-  ).length;
+  // Filter issues by status
+  const pendingIssues = issues.filter(issue => issue.status === ISSUE_STATUS.PENDING);
+  const inProgressIssues = issues.filter(issue => 
+    issue.status === ISSUE_STATUS.IN_PROGRESS || 
+    issue.status === ISSUE_STATUS.ASSIGNED
+  );
+  const resolvedIssues = issues.filter(issue => issue.status === ISSUE_STATUS.RESOLVED);
+  const rejectedIssues = issues.filter(issue => issue.status === ISSUE_STATUS.DC_REJECTED);
 
   return (
     <div>
@@ -70,7 +73,7 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Total Issues</h3>
-            <p className="text-2xl font-bold text-gray-800">{totalIssues}</p>
+            <p className="text-2xl font-bold text-gray-800">{issues.length}</p>
             <p className="text-xs text-gray-400 mt-1">All reported issues</p>
           </div>
         </div>
@@ -82,7 +85,7 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Pending Issues</h3>
-            <p className="text-2xl font-bold text-yellow-600">{pendingIssues}</p>
+            <p className="text-2xl font-bold text-yellow-600">{pendingIssues.length}</p>
             <p className="text-xs text-gray-400 mt-1">Awaiting review</p>
           </div>
         </div>
@@ -94,7 +97,7 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Rejected Issues</h3>
-            <p className="text-2xl font-bold text-red-600">{rejectedIssues}</p>
+            <p className="text-2xl font-bold text-red-600">{rejectedIssues.length}</p>
             <p className="text-xs text-gray-400 mt-1">Requires attention</p>
           </div>
         </div>
@@ -108,7 +111,7 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
               <FiAlertTriangle className="mr-1" /> High Priority: {issues.filter(i => i.priorityLevel === 'High').length}
             </span>
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-              <FiClock className="mr-1" /> Pending: {pendingIssues}
+              <FiClock className="mr-1" /> Pending: {pendingIssues.length}
             </span>
           </div>
         </div>
@@ -147,13 +150,17 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center">
-                      <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
-                        {issue.status}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${ISSUE_STATUS.getStatusColor(issue.status)}`}>
+                        {ISSUE_STATUS.getDisplayName(issue.status)}
                       </span>
                     </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priorityLevel)}`}>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      issue.priorityLevel === 'High' ? 'bg-red-100 text-red-800' :
+                      issue.priorityLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
                       {issue.priorityLevel}
                     </span>
                   </td>

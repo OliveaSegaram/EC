@@ -23,6 +23,7 @@ interface Issue {
   status: string;
   submittedAt: string;
   updatedAt: string;
+  comment?: string;  // Add comment as an optional string
   user: {
     id: number;
     username: string;
@@ -416,6 +417,36 @@ const Approvals = () => {
                     </div>
                   </div>
                 </div>
+                
+                {/* Technical Officer Comments */}
+                {(selectedIssue.status === 'In Progress' || selectedIssue.status === 'Resolved') && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Technical Officer's Update</h4>
+                    <div className="bg-blue-50 p-3 rounded-md">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">
+                            Status: {selectedIssue.status}
+                          </p>
+                          {selectedIssue.comment && (
+                            <div className="mt-2">
+                              <p className="text-sm font-medium text-gray-700">Comment:</p>
+                              <p className="text-sm text-gray-600 whitespace-pre-line">
+                                {selectedIssue.comment}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                          {selectedIssue.assignedTo?.username || 'Technical Officer'}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500">
+                        Last updated: {new Date(selectedIssue.updatedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
               
               {/* Approval/Rejection Comments */}
               {(selectedIssue.status === 'Rejected by DC' || 

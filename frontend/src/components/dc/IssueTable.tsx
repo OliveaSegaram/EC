@@ -1,5 +1,6 @@
 import React from 'react';
 import { FiEye } from 'react-icons/fi';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 interface Issue {
   id: number;
@@ -33,8 +34,8 @@ const IssueTable: React.FC<IssueTableProps> = ({
   showComment,
   setSelectedIssue,
   setShowModal,
-  getStatusColor,
-  getPriorityColor
+  getStatusColor,  // Keeping for backward compatibility
+  getPriorityColor // Keeping for backward compatibility
 }) => {
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow p-4">
@@ -55,13 +56,17 @@ const IssueTable: React.FC<IssueTableProps> = ({
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{issue.id}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.complaintType}</td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priorityLevel)}`}>
+                <span className={`px-2 py-1 text-xs rounded-full ${
+                  issue.priorityLevel === 'High' ? 'bg-red-100 text-red-800' :
+                  issue.priorityLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-green-100 text-green-800'
+                }`}>
                   {issue.priorityLevel}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
-                  {issue.status}
+                <span className={`px-2 py-1 text-xs rounded-full ${ISSUE_STATUS.getStatusColor(issue.status)}`}>
+                  {ISSUE_STATUS.getDisplayName(issue.status)}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
