@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiEdit2, FiTrash2, FiEye, FiChevronLeft, FiChevronRight, FiRefreshCw } from 'react-icons/fi';
+import { FiTrash2, FiEye, FiChevronLeft, FiChevronRight } from 'react-icons/fi'; // Removed unused: FiEdit2
 import axios, { AxiosError } from 'axios';
 import { toast } from 'react-toastify';
 import IssueDetailsModal from './IssueDetailsModal';
@@ -21,22 +21,18 @@ interface Issue {
 interface IssueTableProps {
   issues: Issue[];
   filterStatus: 'All' | 'Pending' | 'Approved' | 'Rejected';
-  setEditMode: (edit: boolean) => void;
-  setEditForm: (issue: Issue) => void;
   setDeleteConfirm: (confirm: { open: boolean; issue: Issue | null }) => void;
   getStatusColor: (status: string) => string;
   getPriorityColor: (priority: string) => string;
   currentPage: number;
   setCurrentPage: (page: number) => void;
   itemsPerPage: number;
-  fetchIssues?: () => Promise<void>;
+  fetchIssues: () => Promise<void>;
 }
 
 const IssueTable: React.FC<IssueTableProps> = ({
   issues,
   filterStatus,
-  setEditMode,
-  setEditForm,
   setDeleteConfirm,
   getStatusColor,
   getPriorityColor,
@@ -51,7 +47,7 @@ const IssueTable: React.FC<IssueTableProps> = ({
   const [loadingDistricts, setLoadingDistricts] = useState(true);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [isReopening, setIsReopening] = useState(false);
+  const [, setIsReopening] = useState(false);
   
   // Handle reopening an issue
   const handleReopenIssue = async (issueId: number) => {
@@ -236,25 +232,13 @@ const IssueTable: React.FC<IssueTableProps> = ({
                         <FiEye size={18} />
                       </button>
                       {issue.status === 'Pending' && (
-                        <>
-                          <button
-                            onClick={() => {
-                              setEditMode(true);
-                              setEditForm(issue);
-                            }}
-                            className="text-yellow-500 hover:text-yellow-600 transition-colors duration-200 p-1.5 rounded-full hover:bg-yellow-50"
-                            title="Edit Issue"
-                          >
-                            <FiEdit2 size={18} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm({ open: true, issue })}
-                            className="text-red-500 hover:text-red-600 transition-colors duration-200 p-1.5 rounded-full hover:bg-red-50"
-                            title="Delete Issue"
-                          >
-                            <FiTrash2 size={18} />
-                          </button>
-                        </>
+                        <button
+                          onClick={() => setDeleteConfirm({ open: true, issue })}
+                          className="text-red-500 hover:text-red-600 transition-colors duration-200 p-1.5 rounded-full hover:bg-red-50"
+                          title="Delete Issue"
+                        >
+                          <FiTrash2 size={18} />
+                        </button>
                       )}
                     </div>
                   </td>

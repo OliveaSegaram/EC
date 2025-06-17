@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LoginAssets } from '../assets/icons/login/login';
+// Removed unused LoginAssets import
 import { useAppContext } from '../provider/AppContext';
 import { toast } from 'react-toastify';
 
@@ -78,7 +78,7 @@ const Register = () => {
     attachment: null
   });
   
-  const [showSkills, setShowSkills] = useState(false);
+  const [, setShowSkills] = useState(false); // Keep setShowSkills for potential future use
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -131,7 +131,7 @@ const Register = () => {
     e.preventDefault();
     
     const validateForm = () => {
-      const { nic, username, email, password, confirmPassword, role, districtId, skillId } = formData;
+      const { nic, password, confirmPassword, districtId } = formData;
       
       if (!nic.trim()) {
         setError('NIC is required');

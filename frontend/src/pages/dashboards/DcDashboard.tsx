@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiAlertCircle, FiLogOut, FiBell, FiMapPin, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FiHome, FiAlertCircle, FiLogOut, FiBell, FiMapPin } from 'react-icons/fi';
 import axios from 'axios';
 import userAvatar from '../../assets/icons/login/User.svg';
 import { toast, ToastContainer } from 'react-toastify';
@@ -29,50 +29,9 @@ interface Issue {
 
 const DCDashboard = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [username, setUsername] = useState('');
 
-  // Fetch user profile on component mount
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.log('No token found');
-          return;
-        }
-
-        console.log('Fetching user profile...');
-        const response = await fetch('http://localhost:5000/api/auth/user-profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Error response from server:', errorData);
-          return;
-        }
-
-        const userData = await response.json();
-        console.log('User profile data:', userData);
-        
-        if (userData && userData.username) {
-          setUsername(userData.username);
-          console.log('Username set to:', userData.username);
-        } else {
-          console.error('No username found in response');
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-      }
-    };
-
-    fetchUserProfile();
-  }, []);
-
+  // State management
   const [activeTab, setActiveTab] = useState<'overview' | 'issues'>('overview');
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
@@ -83,9 +42,8 @@ const DCDashboard = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [userDistrict, setUserDistrict] = useState<string>('');
   const [userDistrictId, setUserDistrictId] = useState<string>('');
-  const [userName, setUserName] = useState<string>('');
-  const dropdownRef = React.useRef<HTMLDivElement>(null);
-  
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -99,51 +57,91 @@ const DCDashboard = () => {
     };
   }, [dropdownRef]);
 
-  useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
-  useEffect(() => {
-    if (userDistrictId) {
-      fetchIssues();
-    }
-  }, [userDistrictId]);
-  
-  const fetchUserProfile = async () => {
+  // Fetch user profile and set up the component
+  const fetchUserProfile = useCallback(async () => {
+    const toastId = toast.loading('Loading user profile...');
     try {
       const token = localStorage.getItem('token');
       if (!token) {
+        console.log('No token found');
+        toast.update(toastId, {
+          render: 'Session expired. Please log in again.',
+          type: 'error',
+          isLoading: false,
+          autoClose: 3000,
+          closeButton: true
+        });
         navigate('/login');
         return;
       }
 
+      console.log('Fetching user profile...');
       const response = await axios.get('http://localhost:5000/api/auth/user-profile', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
-      if (response.data) {
-        // Handle both string and object district formats
-        const district = response.data.district;
-        if (district && typeof district === 'object' && district.name) {
-          setUserDistrict(district.name);
-          setUserDistrictId(district.id || '');
-        } else {
-          setUserDistrict(district || '');
-          // If district is a string, we need to get the ID from the user object
-          if (response.data.districtId) {
-            setUserDistrictId(response.data.districtId);
+      const userData = response.data;
+      console.log('User profile data:', userData);
+
+      if (userData && userData.username) {
+        setUsername(userData.username);
+
+        if (userData.district) {
+          if (typeof userData.district === 'object' && userData.district.name) {
+            setUserDistrict(userData.district.name);
+            setUserDistrictId(userData.district.id || '');
+          } else if (userData.districtId) {
+            setUserDistrictId(userData.districtId);
           }
+        } else if (userData.districtId) {
+          setUserDistrictId(userData.districtId);
         }
-        setUserName(response.data.username || '');
+
+        console.log('Username set to:', userData.username);
+        toast.update(toastId, {
+          render: 'Profile loaded successfully',
+          type: 'success',
+          isLoading: false,
+          autoClose: 2000,
+          closeButton: true
+        });
+      } else {
+        console.error('No username found in response');
+        toast.update(toastId, {
+          render: 'Error: Invalid user data received',
+          type: 'error',
+          isLoading: false,
+          autoClose: 3000,
+          closeButton: true
+        });
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
-    }
-  };
+      const errorMessage = axios.isAxiosError(error)
+        ? (error.response?.data?.message || 'Failed to fetch profile')
+        : 'An unexpected error occurred';
 
-  const fetchIssues = async () => {
+      toast.update(toastId, {
+        render: `Error: ${errorMessage}`,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+        closeButton: true
+      });
+
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        navigate('/login');
+      }
+    }
+  }, [navigate]);
+
+  // Fetch issues with proper error handling and loading states
+  const fetchIssues = useCallback(async () => {
+    if (!userDistrictId) return;
+
     const toastId = toast.loading('Fetching issues...');
     try {
       console.log('Fetching issues...');
@@ -161,49 +159,44 @@ const DCDashboard = () => {
         return;
       }
 
+      console.log('Sending request to fetch issues for district ID:', userDistrictId);
+      
       if (!userDistrictId) {
-        console.error('No district ID available');
-        toast.update(toastId, {
-          render: 'Error: District information not available',
-          type: 'error',
-          isLoading: false,
-          autoClose: 3000,
-          closeButton: true
-        });
-        return;
+        throw new Error('No district ID available for this user');
       }
 
-      console.log('Sending request to fetch issues for district ID:', userDistrictId);
-      const response = await axios.get(`http://localhost:5000/api/issues?userDistrict=${userDistrictId}`, {
+      const response = await axios.get('http://localhost:5000/api/issues', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': '0',
+          'Content-Type': 'application/json'
+        },
+        params: {
+          userDistrict: userDistrictId
         }
       });
 
       console.log('Issues API response:', response);
-      
+
       if (response.data) {
         console.log('Issues data received:', response.data);
         if (response.data.issues) {
-          // Map statuses to ensure they match our constants
           const normalizedIssues = response.data.issues.map((issue: any) => ({
             ...issue,
-            // Ensure status matches one of our constants
-            status: Object.values(ISSUE_STATUS).includes(issue.status as any) 
-              ? issue.status 
-              : issue.status === 'Rejected' 
-                ? ISSUE_STATUS.DC_REJECTED 
-                : issue.status === 'Approved by DC' 
-                  ? ISSUE_STATUS.DC_APPROVED 
+            status: Object.values(ISSUE_STATUS).includes(issue.status as any)
+              ? issue.status
+              : issue.status === 'Rejected'
+                ? ISSUE_STATUS.DC_REJECTED
+                : issue.status === 'Approved by DC'
+                  ? ISSUE_STATUS.DC_APPROVED
                   : issue.status
           }));
-          
+
           console.log('Setting normalized issues:', normalizedIssues);
           setIssues(normalizedIssues);
-          
+
           toast.update(toastId, {
             render: 'Issues loaded successfully',
             type: 'success',
@@ -236,10 +229,39 @@ const DCDashboard = () => {
     } catch (error) {
       console.error('Error fetching issues:', error);
       setIssues([]);
-      const errorMessage = axios.isAxiosError(error) 
-        ? (error.response?.data?.message || 'Failed to fetch issues')
-        : 'An unexpected error occurred';
       
+      let errorMessage = 'An unexpected error occurred';
+      let shouldLogout = false;
+
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          
+          console.error('Error response data:', error.response.data);
+          console.error('Error status:', error.response.status);
+          
+          if (error.response.status === 403) {
+            errorMessage = 'Access denied. You do not have permission to view these issues.';
+            shouldLogout = true;
+          } else if (error.response.status === 401) {
+            errorMessage = 'Session expired. Please log in again.';
+            shouldLogout = true;
+          } else if (error.response.data?.message) {
+            errorMessage = error.response.data.message;
+          } else {
+            errorMessage = `Server error: ${error.response.status} ${error.response.statusText}`;
+          }
+        } else if (error.request) {
+          // The request was made but no response was received
+          console.error('No response received:', error.request);
+          errorMessage = 'No response from server. Please check your connection.';
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error('Request setup error:', error.message);
+          errorMessage = `Request error: ${error.message}`;
+        }
+      }
+
+      console.error('Error details:', errorMessage);
       toast.update(toastId, {
         render: `Error: ${errorMessage}`,
         type: 'error',
@@ -247,10 +269,30 @@ const DCDashboard = () => {
         autoClose: 5000,
         closeButton: true
       });
-    }
-  };
 
-  const handleApproveIssue = async (issueId: number) => {
+      if (shouldLogout) {
+        // Clear any existing auth data
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        // Redirect to login after a short delay
+        setTimeout(() => navigate('/login'), 2000);
+      }
+    }
+  }, [userDistrictId, navigate]);
+
+  // Fetch user profile on component mount
+  useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
+
+  // Fetch issues when district ID changes
+  useEffect(() => {
+    if (userDistrictId) {
+      fetchIssues();
+    }
+  }, [userDistrictId, fetchIssues]);
+
+  const handleApproveIssue = useCallback(async (issueId: number) => {
     const toastId = toast.loading('Approving issue...');
     try {
       const token = localStorage.getItem('token');
@@ -271,11 +313,13 @@ const DCDashboard = () => {
       );
       
       // Update the issue status locally
-      setIssues(issues.map(issue => 
-        issue.id === issueId 
-          ? { ...issue, status: ISSUE_STATUS.DC_APPROVED, comment: 'Approved by DC' } 
-          : issue
-      ));
+      setIssues(currentIssues => 
+        currentIssues.map(issue => 
+          issue.id === issueId 
+            ? { ...issue, status: ISSUE_STATUS.DC_APPROVED, comment: 'Approved by DC' } 
+            : issue
+        )
+      );
       
       toast.update(toastId, {
         render: 'Issue approved successfully',
@@ -289,15 +333,23 @@ const DCDashboard = () => {
       await fetchIssues();
     } catch (error) {
       console.error('Error approving issue:', error);
+      const errorMessage = axios.isAxiosError(error)
+        ? (error.response?.data?.message || 'Failed to approve issue')
+        : 'An unexpected error occurred';
+
       toast.update(toastId, {
-        render: 'Error approving issue',
+        render: `Error: ${errorMessage}`,
         type: 'error',
         isLoading: false,
         autoClose: 3000,
         closeButton: true
       });
+
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        navigate('/login');
+      }
     }
-  };
+  }, [fetchIssues, navigate]);
 
   const handleRejectSubmit = async (issueId: number) => {
     if (!rejectComment.trim()) {

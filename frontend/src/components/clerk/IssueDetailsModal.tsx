@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
-import { FiX, FiDownload, FiCalendar, FiHardDrive, FiAlertCircle, FiMapPin, FiCheckCircle, FiClock, FiTag, FiUser, FiFile, FiInfo, FiRefreshCw } from 'react-icons/fi';
-import axios from 'axios';
-import { toast } from 'react-toastify';
+import React from 'react';
+import { 
+  FiUser, 
+  FiFile, 
+  FiInfo, 
+  FiCheckCircle,
+  FiRefreshCw
+} from 'react-icons/fi';
 
 interface Issue {
   id: number;
@@ -39,23 +43,12 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
   if (!issue) return null;
 
   const handleViewAttachment = () => {
-    if (issue.attachment) {
+    if (issue?.attachment) {
       window.open(`http://localhost:5000/${issue.attachment}`, '_blank');
     }
   };
 
-  const getPriorityIcon = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case 'high':
-        return <FiAlertCircle className="text-red-500" />;
-      case 'medium':
-        return <FiClock className="text-yellow-500" />;
-      case 'low':
-        return <FiTag className="text-blue-500" />;
-      default:
-        return <FiTag className="text-gray-500" />;
-    }
-  };
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

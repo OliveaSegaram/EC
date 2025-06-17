@@ -12,7 +12,6 @@ const Login = () => {
 
   const [nic, setNic] = useState('');
   const [password, setPassword] = useState('');
-  const [hover, setHover] = useState(false);
 
   // Forgot password modal states
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -134,8 +133,6 @@ const Login = () => {
             <button
               type="submit"
               className="w-full py-2 rounded-full text-white text-xl bg-gradient-to-b from-purple-600 to-purple-900 shadow-md transition duration-300 hover:shadow-lg"
-              onMouseEnter={() => setHover(true)}
-              onMouseLeave={() => setHover(false)}
             >
               Login
             </button>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { FaTrash } from 'react-icons/fa';
 import { useAppContext } from '../../provider/AppContext';
 import { JSX } from 'react/jsx-runtime';
@@ -9,15 +9,20 @@ const RolePanel: React.FC = (): JSX.Element => {
   const [roles, setRoles] = useState<any[]>([]);
   const [newRole, setNewRole] = useState('');
 
-  const fetchRoles = async () => {
-    const res = await fetch(`${backendUrl}/root/roles`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    });
-    const data = await res.json();
-    setRoles(data);
-  };
+  const fetchRoles = useCallback(async () => {
+    try {
+      const res = await fetch(`${backendUrl}/root/roles`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      const data = await res.json();
+      setRoles(data);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      toast.error('Failed to fetch roles');
+    }
+  }, [backendUrl]);
 
   const handleAdd = async () => {
     if (!newRole.trim()) return;
@@ -50,7 +55,7 @@ const RolePanel: React.FC = (): JSX.Element => {
 
   useEffect(() => {
     fetchRoles();
-  }, []);
+  }, [fetchRoles]); // Added fetchRoles to the dependency array
 
   return (
     <div className="p-6 bg-gray-50 rounded-lg shadow-sm">

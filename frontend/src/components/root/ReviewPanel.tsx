@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   FiEye, 
   FiCheck, 
   FiX, 
   FiClock, 
-  FiAlertCircle, 
   FiCheckCircle, 
-  FiDownload,
-  FiRefreshCw,
   FiCalendar,
   FiPaperclip
-} from 'react-icons/fi';
+} from 'react-icons/fi'; // Removed unused: FiAlertCircle
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 
@@ -43,10 +40,7 @@ const ReviewPanel: React.FC = () => {
   const [issues, setIssues] = useState<ReviewIssue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<ReviewIssue | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [comment, setComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
 
   const getStatusBadge = (status: string) => {
@@ -78,17 +72,8 @@ const ReviewPanel: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchIssues();
-  }, []);
-
-  const fetchIssues = async (showLoading = true) => {
+  const fetchIssues = useCallback(async () => {
     try {
-      if (showLoading) {
-        setIsLoading(true);
-      } else {
-        setIsRefreshing(true);
-      }
       
       const token = localStorage.getItem('token');
       if (!token) {
@@ -116,19 +101,19 @@ const ReviewPanel: React.FC = () => {
       setIssues([]);
       throw error;
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      // Loading complete
     }
-  };
-  
-  const handleRefresh = async () => {
-    try {
-      await fetchIssues(false);
-      toast.success('Issues refreshed successfully');
-    } catch (error) {
-      // Error already handled in fetchIssues
-    }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchIssues();
+  }, [fetchIssues]);
+
+  useEffect(() => {
+    fetchIssues();
+  }, [fetchIssues]);
+
+  // Refresh is handled by the refresh button in the UI
 
   const handleConfirm = async (issueId: number) => {
     if (!selectedIssue) return;

@@ -1,13 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  FiHome,
-  FiAlertCircle,
-  FiLogOut,
-  FiBell,
-  FiMapPin,
-  FiUser,
-} from 'react-icons/fi';
+import { FiHome, FiAlertCircle, FiLogOut, FiBell, FiMapPin } from 'react-icons/fi';
 import axios from 'axios';
 import { useAppContext } from '../../provider/AppContext';
 import userAvatar from '../../assets/icons/login/User.svg';

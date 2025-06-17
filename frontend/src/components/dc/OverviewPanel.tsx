@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiCheckCircle, FiXCircle, FiEye, FiMessageSquare, FiList, FiClock, FiCheck, FiAlertTriangle } from 'react-icons/fi';
+import { FiXCircle, FiEye, FiList, FiAlertTriangle, FiClock } from 'react-icons/fi'; // Only include used icons
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 interface Issue {
@@ -55,11 +55,12 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
 
   // Filter issues by status
   const pendingIssues = issues.filter(issue => issue.status === ISSUE_STATUS.PENDING);
-  const inProgressIssues = issues.filter(issue => 
-    issue.status === ISSUE_STATUS.IN_PROGRESS || 
-    issue.status === ISSUE_STATUS.ASSIGNED
-  );
-  const resolvedIssues = issues.filter(issue => issue.status === ISSUE_STATUS.RESOLVED);
+  // These variables are filtered but not used in the component
+  // const inProgressIssues = issues.filter(issue => 
+  //   issue.status === ISSUE_STATUS.IN_PROGRESS || 
+  //   issue.status === ISSUE_STATUS.ASSIGNED
+  // );
+  // const resolvedIssues = issues.filter(issue => issue.status === ISSUE_STATUS.RESOLVED);
   const rejectedIssues = issues.filter(issue => issue.status === ISSUE_STATUS.DC_REJECTED);
 
   return (

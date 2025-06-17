@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiCheckCircle, FiLayers, FiMoreVertical, FiThumbsUp, FiEye, FiUser, FiChevronDown } from 'react-icons/fi';
-import { CiCircleList, CiWallet, CiClock1 } from 'react-icons/ci';
+import { FiCheckCircle, FiLayers, FiThumbsUp, FiEye, FiUser, FiChevronDown } from 'react-icons/fi'; // Added back FiUser and FiChevronDown as they are used in JSX
 import axios from 'axios';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
 

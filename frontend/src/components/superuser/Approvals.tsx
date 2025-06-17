@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiCheckCircle, FiXCircle, FiClock, FiSearch, FiEye } from 'react-icons/fi';
+import { FiSearch, FiEye, FiCheckCircle } from 'react-icons/fi'; // Added back FiCheckCircle as it's used in the JSX
 import axios from 'axios';
 
 interface Approval {
@@ -55,29 +55,21 @@ const Approvals = () => {
     assigned: 0
   });
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
+  const fetchUserProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
         const response = await axios.get('http://localhost:5000/api/auth/user-profile', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
-        if (response.data.district) {
-          setUserDistrict(response.data.district);
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
+        setUserDistrict(response.data.district || '');
       }
-    };
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
-    fetchUserProfile();
-    fetchAllIssues();
-  }, [activeTab, statusFilter]);
-
-  const fetchAllIssues = async () => {
+  const fetchAllIssues = React.useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -86,12 +78,7 @@ const Approvals = () => {
         return;
       }
 
-      // Get user profile to determine district
-      const userProfile = await axios.get('http://localhost:5000/api/auth/user-profile', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      const userDistrict = userProfile.data?.district || '';
+      // Set district filter based on active tab
       const districtFilter = activeTab === 'colombo' ? 'Colombo Head Office' : '';
       
       // Fetch all issues
@@ -126,7 +113,12 @@ const Approvals = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, statusFilter]);
+
+  useEffect(() => {
+    fetchUserProfile();
+    fetchAllIssues();
+  }, [fetchAllIssues]);
 
   const handleViewDetails = (issue: Issue) => {
     setSelectedIssue(issue);

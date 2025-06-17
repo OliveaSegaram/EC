@@ -1,14 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiAlertCircle, FiLogOut, FiBell, FiPlus, FiArrowLeft, FiMapPin } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FiHome, FiAlertCircle, FiBell, FiArrowLeft, FiMapPin } from 'react-icons/fi'; // Removed unused: FiPlus, FiLogOut
 import axios from 'axios';
 import userAvatar from '../../assets/icons/login/User.svg';
-
-// Import components
+import DeleteConfirmation from '../../components/clerk/DeleteConfirmation';
 import IssueSubmit from '../../components/clerk/issuesubmit';
 import IssueTable from '../../components/clerk/IssueTable';
-import IssueDetailsModal from '../../components/clerk/IssueDetailsModal';
-import DeleteConfirmation from '../../components/clerk/DeleteConfirmation';
 import OverviewPanel from '../../components/clerk/OverviewPanel';
 
 interface Issue {
@@ -25,13 +22,26 @@ interface Issue {
 }
 
 const ClerkDashboard = () => {
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
   const [username, setUsername] = useState('');
-  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{open: boolean, issue: Issue | null}>({open: false, issue: null});
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const location = useLocation();
+  
+  // Handle clicks outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Fetch user profile on component mount
   useEffect(() => {
@@ -73,25 +83,21 @@ const ClerkDashboard = () => {
 
     fetchUserProfile();
   }, []);
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'issues'>('dashboard');
   const [issues, setIssues] = useState<Issue[]>([]);
   const [pendingIssues, setPendingIssues] = useState<Issue[]>([]);
   const [rejectedIssues, setRejectedIssues] = useState<Issue[]>([]);
-  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
-  const [showModal, setShowModal] = useState(false);
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
   const [overviewMode, setOverviewMode] = useState<'dashboard' | 'form'>('dashboard');
   const [filterStatus, setFilterStatus] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
-  const [editMode, setEditMode] = useState(false);
-  const [editForm, setEditForm] = useState<Issue | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{open: boolean, issue: Issue | null}>({open: false, issue: null});
   const [currentPage, setCurrentPage] = useState(1);
   const [currentIssuesPage, setCurrentIssuesPage] = useState(1);
   const [itemsPerPage] = useState(5); // 5 items per page for pagination
   const [itemsPerIssuesPage] = useState(5);
 
   // Function to fetch issues
-  const fetchIssues = async () => {
+  const fetchIssues = useCallback(async () => {
     try {
       console.log('Fetching issues...');
       const token = localStorage.getItem('token');
@@ -154,17 +160,19 @@ const ClerkDashboard = () => {
       // Set empty array on error to prevent UI issues
       setIssues([]);
     }
-  };
+  }, [navigate]);
 
   // Fetch issues when component mounts and when activeTab changes
   useEffect(() => {
     fetchIssues();
-  }, [activeTab]);
+  }, [fetchIssues]);
 
   // Function to manually refresh issues
-  const refreshIssues = async () => {
+  const refreshIssues = useCallback(async () => {
     await fetchIssues();
-  };
+  }, [fetchIssues]);
+
+  // Removed unused handleIssueSelect function
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -275,26 +283,29 @@ const ClerkDashboard = () => {
           <div className="flex items-center space-x-4">
             <FiBell className="text-gray-700 cursor-pointer" size={18} />
             <div className="relative flex items-center space-x-2">
-              <img
-                src={userAvatar}
-                alt="User Avatar"
-                className="w-8 h-8 rounded-full cursor-pointer"
-                onClick={() => setShowDropdown(!showDropdown)}
-              />
-              <span className="text-gray-700 font-medium">{username}</span>
-              {showDropdown && (
-                <div 
-                  ref={dropdownRef}
-                  className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
-                >
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    <FiLogOut className="mr-2" size={16} /> Logout
-                  </button>
+              <div className="relative">
+                <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setShowDropdown(!showDropdown)}>
+                  <img
+                    src={userAvatar}
+                    alt="User Avatar"
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <span className="text-gray-700 font-medium">{username}</span>
                 </div>
-              )}
+                {showDropdown && (
+                  <div 
+                    ref={dropdownRef}
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
+                  >
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -378,8 +389,6 @@ const ClerkDashboard = () => {
                 <IssueTable
                   issues={filterStatus === 'All' ? issues : issues.filter(issue => issue.status === filterStatus)}
                   filterStatus={filterStatus}
-                  setEditMode={setEditMode}
-                  setEditForm={setEditForm}
                   setDeleteConfirm={setDeleteConfirm}
                   getStatusColor={getStatusColor}
                   getPriorityColor={getPriorityColor}
@@ -392,24 +401,16 @@ const ClerkDashboard = () => {
             )}
           </>
         )} 
-        {/* Issue Details Modal */}
-        {selectedIssue && (
-          <IssueDetailsModal
-            issue={selectedIssue}
-            onClose={() => setShowModal(false)}
-            getStatusColor={getStatusColor}
-            getPriorityColor={getPriorityColor}
+        {/* Delete Confirmation Dialog */}
+        {deleteConfirm.open && (
+          <DeleteConfirmation
+            deleteConfirm={deleteConfirm}
+            setDeleteConfirm={setDeleteConfirm}
+            fetchIssues={fetchIssues}
+            isDeleting={isDeleting}
+            setIsDeleting={setIsDeleting}
           />
         )}
-       
-        {/* Delete Confirmation Dialog */}
-        <DeleteConfirmation
-          deleteConfirm={deleteConfirm}
-          setDeleteConfirm={setDeleteConfirm}
-          fetchIssues={fetchIssues}
-          isDeleting={isDeleting}
-          setIsDeleting={setIsDeleting}
-        />
       </main>
     </div>
   );

@@ -61,7 +61,7 @@ const RootDashboard = () => {
     if (['registration', 'issues', 'roles', 'review'].includes(hash)) {
       setActiveTab(hash as typeof activeTab);
     }
-  }, [window.location.hash]);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {

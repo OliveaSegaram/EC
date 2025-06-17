@@ -94,14 +94,6 @@ const IssuePanel: React.FC = () => {
     setShowApproveModal(true);
   };
 
-  const approveIssue = (issue: Issue) => {
-    if (issue.status === ISSUE_STATUS.DC_APPROVED) {
-      openApproveModal(issue);
-    } else {
-      toast.error('Issue must be approved by DC first');
-    }
-  };
-
   const handleRejectIssue = async (issueId: number) => {
     try {
       const token = localStorage.getItem('token');
@@ -149,11 +141,7 @@ const IssuePanel: React.FC = () => {
     setShowCommentModal(true);
   };
 
-  const showComment = (issue: Issue) => {
-    setCommentIssue(issue);
-    setRejectComment(issue.comment || '');
-    setShowCommentModal(true);
-  };
+  // Removed unused showComment function
 
   const getStatusColor = (status: string) => {
     switch (status) {

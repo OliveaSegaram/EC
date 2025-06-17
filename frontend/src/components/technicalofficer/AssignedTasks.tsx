@@ -29,7 +29,6 @@ const AssignedTasks = () => {
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [comment, setComment] = useState('');
-  const [showResolved, setShowResolved] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   
   interface UpdateRequestData {

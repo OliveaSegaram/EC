@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiPlus, FiAlertTriangle, FiCheckCircle, FiXCircle, FiClock, FiList } from 'react-icons/fi';
+import { FiPlus, FiXCircle, FiClock, FiList } from 'react-icons/fi';
 
 interface Issue {
   id: number;
