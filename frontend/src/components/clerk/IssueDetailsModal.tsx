@@ -171,21 +171,74 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
               )}
             </div>
 
-            {/* Rejection Comment - Only show if status indicates rejection and comment exists */}
-            {(issue.status.includes('Rejected') || issue.status === 'DC Rejected' || issue.status === 'Rejected by DC' || issue.status === 'Rejected by Super Admin') && issue.comment && (
-              <div className="mt-4">
-                <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <FiInfo className="h-5 w-5 text-red-400" />
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800">Rejection Reason</h3>
-                      <div className="mt-1 text-sm text-red-700">
-                        <p>{issue.comment}</p>
+            {/* Status and Comment History */}
+            {issue.comment && (
+              <div className="mt-6">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Status History & Comments</h4>
+                <div className="space-y-4">
+                  {issue.comment.split('\n\n').map((commentBlock, index) => {
+                    // Extract timestamp and user info if available
+                    const timestampMatch = commentBlock.match(/at (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/);
+                    const timestamp = timestampMatch ? new Date(timestampMatch[1]) : null;
+                    const commentText = timestamp ? commentBlock.replace(/\s*\(.*\) at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, '') : commentBlock;
+                    
+                    // Check if this is a status update
+                    const isStatusUpdate = commentText.includes('Status changed to') || 
+                                         commentText.includes('Approved by') || 
+                                         commentText.includes('Rejected by') ||
+                                         commentText.includes('Assigned to');
+                    
+                    // Check if this is a rejection
+                    const isRejection = commentText.includes('Rejected by') || 
+                                      commentText.includes('rejection') ||
+                                      commentText.toLowerCase().includes('reject');
+                    
+                    const isApproval = commentText.includes('Approved by');
+                    const isAssignment = commentText.includes('Assigned to');
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`p-3 rounded-lg border-l-4 ${
+                          isRejection ? 'border-red-400 bg-red-50' : 
+                          isApproval ? 'border-green-400 bg-green-50' :
+                          isAssignment ? 'border-blue-400 bg-blue-50' :
+                          isStatusUpdate ? 'border-purple-400 bg-purple-50' : 
+                          'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 mt-0.5">
+                            {isRejection ? (
+                              <FiInfo className="h-4 w-4 text-red-500" />
+                            ) : isApproval ? (
+                              <FiCheckCircle className="h-4 w-4 text-green-500" />
+                            ) : isAssignment ? (
+                              <FiUser className="h-4 w-4 text-blue-500" />
+                            ) : (
+                              <FiInfo className="h-4 w-4 text-purple-500" />
+                            )}
+                          </div>
+                          <div className="ml-3 flex-1">
+                            <p className="text-sm text-gray-800">
+                              {commentText}
+                            </p>
+                            {timestamp && (
+                              <p className="mt-1 text-xs text-gray-500">
+                                {timestamp.toLocaleString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -20,9 +20,17 @@ exports.approveByDC = async (req, res) => {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
+    // Format the approval comment with timestamp and user info
+    const timestamp = new Date().toISOString();
+    const userInfo = req.user.username ? ` (${req.user.username})` : '';
+    const approvalNote = comment || 'Approved by DC';
+    const statusUpdate = `${approvalNote}${userInfo} at ${timestamp}`;
+    
     // Update the issue
     issue.status = DC_APPROVED;
-    issue.comment = comment || 'Approved by DC';
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n\n${statusUpdate}`
+      : statusUpdate;
     issue.dcApprovedAt = new Date();
     issue.dcApprovedBy = userId;
     await issue.save();
@@ -52,9 +60,17 @@ exports.rejectByDC = async (req, res) => {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
+    // Format the rejection comment with timestamp and user info
+    const timestamp = new Date().toISOString();
+    const userInfo = req.user.username ? ` (${req.user.username})` : '';
+    const rejectionNote = comment || 'Rejected by DC';
+    const statusUpdate = `${rejectionNote}${userInfo} at ${timestamp}`;
+    
     // Update the issue
     issue.status = DC_REJECTED;
-    issue.comment = comment || 'Rejected by DC';
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n\n${statusUpdate}`
+      : statusUpdate;
     issue.rejectedAt = new Date();
     issue.rejectedBy = userId;
     await issue.save();
@@ -84,9 +100,17 @@ exports.approveBySuperAdmin = async (req, res) => {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
+    // Format the approval comment with timestamp and user info
+    const timestamp = new Date().toISOString();
+    const userInfo = req.user.username ? ` (${req.user.username})` : '';
+    const approvalNote = comment || 'Approved by Super Admin';
+    const statusUpdate = `${approvalNote}${userInfo} at ${timestamp}`;
+    
     // Update the issue
     issue.status = SUPER_ADMIN_APPROVED;
-    issue.comment = comment || 'Approved by Super Admin';
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n\n${statusUpdate}`
+      : statusUpdate;
     issue.superAdminApprovedAt = new Date();
     issue.superAdminApprovedBy = userId;
     await issue.save();
@@ -116,9 +140,17 @@ exports.approveBySuperUser = async (req, res) => {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
+    // Format the approval comment with timestamp and user info
+    const timestamp = new Date().toISOString();
+    const userInfo = req.user.username ? ` (${req.user.username})` : '';
+    const approvalNote = comment || 'Approved by Super User';
+    const statusUpdate = `${approvalNote}${userInfo} at ${timestamp}`;
+    
     // Update the issue
     issue.status = SUPER_ADMIN_APPROVED;
-    issue.comment = comment || 'Approved by Super User';
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n\n${statusUpdate}`
+      : statusUpdate;
     issue.superAdminApprovedAt = new Date();
     issue.superAdminApprovedBy = userId;
     await issue.save();
@@ -148,9 +180,17 @@ exports.approveByRoot = async (req, res) => {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
+    // Format the approval comment with timestamp and user info
+    const timestamp = new Date().toISOString();
+    const userInfo = req.user.username ? ` (${req.user.username})` : '';
+    const approvalNote = comment || 'Approved by Root';
+    const statusUpdate = `${approvalNote}${userInfo} at ${timestamp}`;
+    
     // Update the issue
-    issue.status = SUPER_ADMIN_APPROVED; // Use the constant for Super Admin approval
-    issue.comment = comment || 'Approved by Root';
+    issue.status = SUPER_ADMIN_APPROVED;
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n\n${statusUpdate}`
+      : statusUpdate;
     issue.superAdminApprovedAt = new Date();
     issue.superAdminApprovedBy = userId;
     await issue.save();
@@ -180,9 +220,17 @@ exports.rejectByRoot = async (req, res) => {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
+    // Format the rejection comment with timestamp and user info
+    const timestamp = new Date().toISOString();
+    const userInfo = req.user.username ? ` (${req.user.username})` : '';
+    const rejectionNote = comment || 'Rejected by Root';
+    const statusUpdate = `${rejectionNote}${userInfo} at ${timestamp}`;
+    
     // Update the issue
-    issue.status = SUPER_ADMIN_REJECTED; 
-    issue.comment = comment || 'Rejected by Root';
+    issue.status = SUPER_ADMIN_REJECTED;
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n\n${statusUpdate}`
+      : statusUpdate;
     issue.rejectedAt = new Date();
     issue.rejectedBy = userId;
     await issue.save();

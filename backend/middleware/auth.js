@@ -10,9 +10,9 @@ const protect = (req, res, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // Make sure we're using the correct property names from the token
+    
     req.user = {
-      userId: decoded.userId, // This should match what's in the token
+      userId: decoded.userId, //need to be same in the token
       role: decoded.role
     };
     console.log('Auth middleware - User info:', req.user);

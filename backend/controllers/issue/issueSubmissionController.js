@@ -117,13 +117,23 @@ exports.updateIssue = async (req, res) => {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
-    // Update the issue fields if they are provided
+    // Handle comment update with timestamp and user info
+    if (comment) {
+      const timestamp = new Date().toISOString();
+      const userInfo = req.user?.username ? ` (${req.user.username})` : '';
+      const statusUpdate = `${comment}${userInfo} at ${timestamp}`;
+      
+      issue.comment = issue.comment 
+        ? `${issue.comment}\n\n${statusUpdate}`
+        : statusUpdate;
+    }
+    
+    // Update other fields if provided
     if (status) issue.status = status;
     if (description) issue.description = description;
     if (priorityLevel) issue.priorityLevel = priorityLevel;
     if (location) issue.location = location;
     if (typeof underWarranty !== 'undefined') issue.underWarranty = underWarranty;
-    if (comment) issue.comment = comment;
 
     // Save the updated issue
     await issue.save();
@@ -189,9 +199,17 @@ exports.reopenIssue = async (req, res) => {
       });
     }
 
+    // Format the reopen comment with timestamp and user info
+    const timestamp = new Date().toISOString();
+    const userInfo = req.user.username ? ` (${req.user.username})` : '';
+    const reopenComment = comment || 'Issue reopened by subject clerk';
+    const statusUpdate = `${reopenComment}${userInfo} at ${timestamp}`;
+    
     // Update the issue
     issue.status = 'Reopened';
-    issue.comment = comment || 'Issue reopened by subject clerk';
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n\n${statusUpdate}`
+      : statusUpdate;
     issue.reopenedAt = new Date();
     issue.reopenedBy = userId;
     await issue.save();

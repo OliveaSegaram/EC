@@ -292,9 +292,11 @@ const AssignedTasks = () => {
               </div>
               
               {/* Approval Comment */}
-              {selectedIssue.status !== 'Issue assigned by Super User' && selectedIssue.comment && (
+              {selectedIssue.comment && (
                 <div className="p-3 bg-blue-50 border-l-4 border-blue-400 rounded-r">
-                  <h4 className="text-sm font-medium text-blue-800 mb-1">Approval Note</h4>
+                  <h4 className="text-sm font-medium text-blue-800 mb-1">
+                    {selectedIssue.status === 'Issue assigned by Super User' ? 'Assignment Note' : 'Approval Note'}
+                  </h4>
                   <p className="text-sm text-gray-700">{selectedIssue.comment}</p>
                 </div>
               )}

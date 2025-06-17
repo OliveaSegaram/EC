@@ -77,7 +77,15 @@ exports.assignTechnicalOfficer = async (req, res) => {
     issue.status = ASSIGNED;
     issue.assignedAt = new Date();
     issue.assignedBy = userId;
-    issue.comment = comment || `Assigned to ${technicalOfficer.username}`;
+    
+    // Preserve existing comments and add assignment note
+    const assignmentNote = comment || `Assigned to ${technicalOfficer.username}`;
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n
+      
+${assignmentNote}`
+      : assignmentNote;
+      
     await issue.save();
 
     res.status(200).json({
@@ -117,10 +125,19 @@ exports.startWorkingOnIssue = async (req, res) => {
       return res.status(403).json({ message: 'You are not assigned to this issue' });
     }
 
-    // Update the issue
+    // Format the new comment with timestamp and user info
+    const timestamp = new Date().toISOString();
+    const userInfo = req.user.username ? ` (${req.user.username})` : '';
+    const statusUpdate = `Status changed to In Progress${userInfo} at ${timestamp}`;
+    const newComment = comment ? `${comment}\n${statusUpdate}` : statusUpdate;
+    
+    // Preserve existing comments and add the new one
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n\n${newComment}`
+      : newComment;
+      
     issue.status = IN_PROGRESS;
     issue.startedAt = new Date();
-    issue.comment = comment || 'Work in progress';
     await issue.save();
 
     res.status(200).json({
@@ -153,10 +170,21 @@ exports.resolveIssue = async (req, res) => {
       return res.status(403).json({ message: 'You are not assigned to this issue' });
     }
 
-    // Update the issue
+    // Format the new comment with timestamp and user info
+    const timestamp = new Date().toISOString();
+    const userInfo = req.user.username ? ` (${req.user.username})` : '';
+    const statusUpdate = `Status changed to Resolved${userInfo} at ${timestamp}`;
+    const newComment = comment 
+      ? `${comment}\n${statusUpdate}` 
+      : statusUpdate;
+    
+    // Preserve existing comments and add the new one
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n\n${newComment}`
+      : newComment;
+      
     issue.status = RESOLVED;
     issue.resolvedAt = new Date();
-    issue.comment = comment || 'Issue resolved';
     issue.resolutionDetails = resolutionDetails || '';
     await issue.save();
 

@@ -32,9 +32,17 @@ exports.updateTechnicalOfficerIssue = async (req, res) => {
     // If status is being set to Resolved, change it to Pending_Review for review
     const newStatus = status === 'Resolved' ? 'Pending_Review' : status;
     
+    // Format the new comment with timestamp and user info
+    const timestamp = new Date().toISOString();
+    const userInfo = req.user.username ? ` (${req.user.username})` : '';
+    const statusUpdate = `Status updated to ${status}${userInfo} at ${timestamp}`;
+    const newComment = comment ? `${comment}\n${statusUpdate}` : statusUpdate;
+    
     // Update the issue
     issue.status = newStatus;
-    issue.comment = comment || `Status updated to ${status}`;
+    issue.comment = issue.comment 
+      ? `${issue.comment}\n\n${newComment}`
+      : newComment;
     issue.lastUpdatedStatus = status; // Store the original status
     
     // Set resolvedAt if status is Resolved
@@ -141,9 +149,17 @@ exports.confirmReview = async (req, res) => {
 
     // Update the issue based on review result
     if (isApproved) {
-      // If approved, set status to Completed to indicate it's fully resolved and reviewed
+      // Format the approval comment with timestamp and user info
+      const timestamp = new Date().toISOString();
+      const reviewerTitle = req.user.role === 'root' ? 'Root Admin' : 'Super Admin';
+      const approvalComment = comment || `Issue resolved and reviewed by ${reviewerTitle}`;
+      const statusUpdate = `${approvalComment} (${req.user.username || 'System'}) at ${timestamp}`;
+      
+      // Update the issue
       issue.status = 'Completed';
-      issue.comment = comment || `Issue resolved and reviewed by ${req.user.role === 'root' ? 'Root Admin' : 'Super Admin'}`;
+      issue.comment = issue.comment 
+        ? `${issue.comment}\n\n${statusUpdate}`
+        : statusUpdate;
       issue.reviewedBy = userId;
       issue.reviewedAt = new Date();
       
@@ -155,9 +171,16 @@ exports.confirmReview = async (req, res) => {
       // Set completedAt timestamp
       issue.completedAt = new Date();
     } else {
-      // If rejected, send back to In_Progress
+      // Format the rejection comment with timestamp and user info
+      const timestamp = new Date().toISOString();
+      const rejectionComment = comment || 'Review rejected. Please check and resubmit.';
+      const statusUpdate = `${rejectionComment} (${req.user.username || 'System'}) at ${timestamp}`;
+      
+      // Update the issue
       issue.status = 'In_Progress';
-      issue.comment = comment || 'Review rejected. Please check and resubmit.';
+      issue.comment = issue.comment 
+        ? `${issue.comment}\n\n${statusUpdate}`
+        : statusUpdate;
       issue.reviewedBy = userId;
       issue.reviewedAt = new Date();
       issue.lastUpdatedStatus = null; // Clear the last updated status
