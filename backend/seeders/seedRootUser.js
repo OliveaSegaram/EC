@@ -12,14 +12,14 @@ const seedRootUser = async () => {
     const hashedPassword = await bcrypt.hash(process.env.ROOT_PASSWORD, 10);
 
     await User.create({
-      nic: 'ROOT_001',
+      nic: process.env.ROOT_NIC || 'ROOT_001',
       username: 'rootadmin',
       email: process.env.ROOT_EMAIL,
       password: hashedPassword,
       roleId: rootRole.id,
       isVerified: true,
-      districtId: null,  // Root user doesn't need a district
-      skillId: null      // Root user doesn't need a skill
+      districtId: null,  
+      skillId: null      
     });
 
     console.log('Root user seeded.');

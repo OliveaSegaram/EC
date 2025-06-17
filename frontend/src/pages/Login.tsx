@@ -27,8 +27,8 @@ const Login = () => {
     }
     
     // Validate NIC format
-    if (!/^\d{12}$/.test(nic)) {
-      toast.error('Please enter a valid 12-digit NIC');
+    if (!/^(\d{12}|\d{9}[vVxX])$/.test(nic)) {
+      toast.error('Please enter a valid NIC');
       return;
     }
     
@@ -58,8 +58,8 @@ const Login = () => {
     }
     
     // Validate NIC format
-    if (!/^\d{12}$/.test(forgotNic)) {
-      setForgotMsg('Please enter a valid 12-digit NIC');
+    if (!/^(\d{12}|\d{9}[vVxX])$/.test(forgotNic)) {
+      setForgotMsg('Please enter a valid NIC');
       return;
     }
 
