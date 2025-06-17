@@ -26,6 +26,12 @@ const Login = () => {
       return;
     }
     
+    // Validate NIC format
+    if (!/^\d{12}$/.test(nic)) {
+      toast.error('Please enter a valid 12-digit NIC');
+      return;
+    }
+    
     try {
       const response = await fetch(`${backendUrl}/auth/login`, {
         method: 'POST',
@@ -48,6 +54,12 @@ const Login = () => {
     e.preventDefault();
     if (!forgotNic) {
       setForgotMsg('Please enter your NIC');
+      return;
+    }
+    
+    // Validate NIC format
+    if (!/^\d{12}$/.test(forgotNic)) {
+      setForgotMsg('Please enter a valid 12-digit NIC');
       return;
     }
 
