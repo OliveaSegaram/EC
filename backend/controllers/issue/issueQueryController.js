@@ -135,7 +135,7 @@ exports.getTechnicalOfficers = async (req, res) => {
     // Then find all users with that role ID
     const technicalOfficers = await User.findAll({
       where: { roleId: techOfficerRole.id },
-      attributes: ['id', 'username', 'email', 'empId']
+      attributes: ['id', 'username', 'email', 'nic']
     });
 
     res.status(200).json({ technicalOfficers });

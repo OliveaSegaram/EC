@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
     const User = sequelize.define('User', {
-      empId: {
+      nic: {
         type: DataTypes.STRING,
         allowNull: false,
         unique: true
@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
       email: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
+        // Removed unique constraint from email
         validate: {
           isEmail: true
         }
@@ -61,7 +61,7 @@ module.exports = (sequelize, DataTypes) => {
       indexes: [
         {
           unique: true,
-          fields: ['email']
+          fields: ['nic']
         }
       ]
     });

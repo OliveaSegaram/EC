@@ -12,7 +12,7 @@ const seedRootUser = async () => {
     const hashedPassword = await bcrypt.hash(process.env.ROOT_PASSWORD, 10);
 
     await User.create({
-      empId: 'ROOT_001',
+      nic: 'ROOT_001',
       username: 'rootadmin',
       email: process.env.ROOT_EMAIL,
       password: hashedPassword,

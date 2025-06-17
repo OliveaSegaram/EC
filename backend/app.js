@@ -33,47 +33,47 @@ const syncOptions = { alter: false };
 // Function to initialize the database and start the server
 async function initializeDatabase() {
   try {
-    // First, check if we need to add the empId column to existing users
+    // First, check if we need to add the nic column to existing users
     const [results] = await db.sequelize.query(
-      "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'empId'"
+      "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'nic'"
     );
     
     if (results.length === 0) {
-      console.log('The empId column does not exist yet. Adding it to existing users...');
+      console.log('The nic column does not exist yet. Adding it to existing users...');
       
       // Get all existing users
       const [users] = await db.sequelize.query('SELECT id FROM Users');
       
       if (users.length > 0) {
-        console.log(`Found ${users.length} existing users that need empId values`);
+        console.log(`Found ${users.length} existing users that need nic values`);
         
-        // Add empId column without constraints first
+        // Add nic column without constraints first
         await db.sequelize.query(
-          "ALTER TABLE Users ADD COLUMN empId VARCHAR(255) DEFAULT 'TEMP'"
+          "ALTER TABLE Users ADD COLUMN nic VARCHAR(20) DEFAULT 'TEMP'"
         );
         
-        // Update each user with a unique empId
+        // Update each user with a unique nic
         for (let i = 0; i < users.length; i++) {
           const user = users[i];
-          const tempEmpId = `EMP${user.id.toString().padStart(5, '0')}`;
+          const tempNic = `NIC${user.id.toString().padStart(5, '0')}`;
           
           await db.sequelize.query(
-            "UPDATE Users SET empId = ? WHERE id = ?",
+            "UPDATE Users SET nic = ? WHERE id = ?",
             {
-              replacements: [tempEmpId, user.id]
+              replacements: [tempNic, user.id]
             }
           );
         }
         
         // Now add the unique constraint
         await db.sequelize.query(
-          "ALTER TABLE Users MODIFY COLUMN empId VARCHAR(255) NOT NULL UNIQUE"
+          "ALTER TABLE Users MODIFY COLUMN nic VARCHAR(20) NOT NULL UNIQUE"
         );
         
-        console.log('Successfully added empId column with unique values');
+        console.log('Successfully added nic column with unique values');
       }
     } else {
-      console.log('empId column already exists');
+      console.log('nic column already exists');
     }
     
     // Now sync the database normally

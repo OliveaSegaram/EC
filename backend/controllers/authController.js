@@ -11,12 +11,8 @@ const register = async (req, res) => {
   console.log('Registration request body:', req.body);
   console.log('Registration request file:', req.file);
   
-  // Make sure empId is properly extracted from the request body
-  const empId = req.body.empId;
-  console.log('Extracted empId:', empId);
-  
   const schema = Joi.object({
-    empId: Joi.string().required(),
+    nic: Joi.string().required(),
     username: Joi.string().required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
@@ -41,7 +37,7 @@ const register = async (req, res) => {
   }
 
   try {
-    let { empId, username, email, password, role, description, districtId, skillId } = req.body;
+    let { nic, username, email, password, role, description, districtId, skillId } = req.body;
     
     // For subject_clerk and dc, verify district exists
     // For other roles, find Colombo Head Office district
@@ -61,12 +57,24 @@ const register = async (req, res) => {
       districtId = district.id;
     }
 
-    // Check if user with same email or empId already exists
-    const existingEmail = await User.findOne({ where: { email } });
-    if (existingEmail) return res.status(400).json({ message: "Email already registered" });
+    // Check if user with same email or nic already exists
+    const existingUser = await User.findOne({ 
+      where: { 
+        [Op.or]: [
+          { email },
+          { nic }
+        ]
+      } 
+    });
     
-    const existingEmpId = await User.findOne({ where: { empId } });
-    if (existingEmpId) return res.status(400).json({ message: "Employee ID already registered" });
+    if (existingUser) {
+      if (existingUser.email === email) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+      if (existingUser.nic === nic) {
+        return res.status(400).json({ message: "NIC already registered" });
+      }
+    }
 
     // For technical officers, verify skill exists
     let skill = null;
@@ -91,7 +99,7 @@ const register = async (req, res) => {
     const attachmentUrl = req.file ? req.file.path : null;
 
     const user = await User.create({
-      empId,
+      nic,
       username,
       email,
       password: hashedPassword,
@@ -111,7 +119,7 @@ const register = async (req, res) => {
       subject: "New Registration Request",
       html: `
         <h3>New Registration</h3>
-        <p><strong>Employee ID:</strong> ${empId}</p>
+        <p><strong>NIC:</strong> ${nic}</p>
         <p><strong>Username:</strong> ${username}</p>
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Role:</strong> ${role}</p>
@@ -133,12 +141,16 @@ const register = async (req, res) => {
 
 
 const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { nic, password } = req.body;
+
+  if (!nic) {
+    return res.status(400).json({ message: 'NIC is required' });
+  }
 
   try {
-    const user = await User.findOne({ where: { email }, include: Role });
+    const user = await User.findOne({ where: { nic }, include: Role });
 
-    if (!user) return res.status(404).json({ message: 'Invalid email or password' });
+    if (!user) return res.status(404).json({ message: 'Invalid NIC or password' });
     if (!user.password || typeof password !== 'string') {
       return res.status(500).json({ message: 'Password data is invalid' });
     }
@@ -220,23 +232,46 @@ const verifyRegistration = async (req, res) => {
 
 
 const forgotPassword = async (req, res) => {
-  const { email } = req.body;
-  const user = await User.findOne({ where: { email } });
-  if (!user) return res.status(404).json({ message: 'User not found' });
+  const { nic } = req.body;
 
-  const token = crypto.randomBytes(20).toString('hex');
-  user.resetToken = token;
-  user.resetTokenExpiry = Date.now() + 1000 * 60 * 30; 
-  await user.save();
+  if (!nic) {
+    return res.status(400).json({ message: 'NIC is required' });
+  }
 
-  const link = `${process.env.FRONTEND_URL}/reset-password/${token}`;
-  await sendEmail({
-    to: user.email,
-    subject: 'Reset Password',
-    html: `<a href="${link}">Reset your password</a>`
-  });
+  try {
+    const user = await User.findOne({ where: { nic } });
+    if (!user) {
+      return res.status(404).json({ message: 'No account found with this NIC' });
+    }
+    
+    if (!user.email) {
+      return res.status(400).json({ message: 'No email associated with this account' });
+    }
+    
+    const token = crypto.randomBytes(20).toString('hex');
+    user.resetToken = token;
+    user.resetTokenExpiry = Date.now() + 1000 * 60 * 30; // 30 minutes
+    await user.save();
+    
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+    
+    await sendEmail({
+      to: user.email,
+      subject: 'Reset Password',
+      html: `
+        <h3>Password Reset Request</h3>
+        <p>You requested a password reset for your account with NIC: ${nic}</p>
+        <p>Please click the link below to reset your password:</p>
+        <a href="${resetLink}">Reset Password</a>
+        <p>This link will expire in 30 minutes.</p>
+      `
+    });
 
-  res.json({ message: 'Reset link sent' });
+    res.json({ message: 'Password reset link has been sent to your email' });
+  } catch (error) {
+    console.error('Error in forgot password:', error);
+    res.status(500).json({ message: 'Error processing password reset request' });
+  }
 };
 
 

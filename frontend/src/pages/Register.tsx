@@ -52,16 +52,30 @@ const Register = () => {
     fetchData();
   }, [backendUrl]);
 
-  const [formData, setFormData] = useState({
-    empId: '',
+  interface FormData {
+    nic: string;
+    username: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+    role: string;
+    districtId: string;
+    skillId: string;
+    description: string;
+    attachment: File | null;
+  }
+
+  const [formData, setFormData] = useState<FormData>({
+    nic: '',
     username: '',
     email: '',
     password: '',
+    confirmPassword: '',
     role: '',
+    districtId: '',
+    skillId: '',
     description: '',
-    districtId: 0,
-    skillId: 0,
-    attachment: null as File | null
+    attachment: null
   });
   
   const [showSkills, setShowSkills] = useState(false);
@@ -78,7 +92,7 @@ const Register = () => {
         ...prev,
         [name]: value,
         // Reset skillId when role changes to non-technical
-        ...(name === 'role' && value !== 'technical_officer' && { skillId: 0 })
+        ...(name === 'role' && value !== 'technical_officer' && { skillId: '' })
       };
       
       // If role is changed to a head office role, set district to Colombo Head Office
@@ -86,7 +100,7 @@ const Register = () => {
         if (headOfficeRoles.includes(value)) {
           const colomboDistrict = districts.find(d => d.name === 'Colombo Head Office');
           if (colomboDistrict) {
-            newFormData.districtId = colomboDistrict.id;
+            newFormData.districtId = colomboDistrict.id.toString();
           }
         }
       }
@@ -100,11 +114,11 @@ const Register = () => {
     }
   };
   
-  const handleSkillChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const skillId = parseInt(e.target.value);
+  const handleSkillChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      skillId
+      skillId: checked ? value : ''
     }));
   };
 
@@ -116,58 +130,67 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
-    if (!formData.empId) {
-      toast.error('Employee ID is required');
-      return;
-    }
+    const validateForm = () => {
+      const { nic, username, email, password, confirmPassword, role, districtId, skillId } = formData;
+      
+      if (!nic.trim()) {
+        setError('NIC is required');
+        return false;
+      }
 
-    if (formData.role === 'technical_officer' && !formData.skillId) {
-      toast.error('Please select a skill');
-      return;
-    }
+      if (formData.role === 'technical_officer' && !formData.skillId) {
+        toast.error('Please select a skill');
+        return false;
+      }
 
-    if (!formData.districtId) {
-      toast.error('Please select a district');
-      return;
-    }
-    
+      if (!districtId) {
+        toast.error('Please select a district');
+        return false;
+      }
+
+      if (password !== confirmPassword) {
+        setError('Passwords do not match');
+        return false;
+      }
+
+      return true;
+    };
+
+    if (!validateForm()) return;
+
     // Create the FormData object for submission
     const payload = new FormData();
     
     try {
       // First, create a regular object for debugging
       const debugData = {
-        empId: formData.empId,
+        nic: formData.nic,
         username: formData.username,
         email: formData.email,
         password: formData.password,
         role: formData.role,
         districtId: formData.districtId,
-        skillId: formData.skillId,
-        description: formData.description || ''
+        skillId: formData.role === 'technical_officer' ? formData.skillId : '1',
+        description: formData.description
       };
       
       console.log('Form data being submitted:', debugData);
       
       // Add form data to payload
-      payload.append('empId', formData.empId);
+      payload.append('nic', formData.nic);
       payload.append('username', formData.username);
       payload.append('email', formData.email);
       payload.append('password', formData.password);
       payload.append('role', formData.role);
-      payload.append('districtId', formData.districtId.toString());
+      payload.append('districtId', formData.districtId);
       
-      // Add skillId only for technical officers
-      if (formData.role === 'technical_officer') {
-        payload.append('skillId', formData.skillId.toString());
-      } else {
-        // Set a default skill ID for non-technical roles if needed
-        payload.append('skillId', '1'); // Adjust this based on your default skill ID
+      // Add skillId (use default '1' for non-technical roles)
+      payload.append('skillId', formData.role === 'technical_officer' ? formData.skillId : '1');
+      
+      // Add description if provided
+      if (formData.description) {
+        payload.append('description', formData.description);
       }
-      
-      // Add description
-      payload.append('description', formData.description || '');
       
       // Add attachment if exists
       if (formData.attachment) {
@@ -249,10 +272,12 @@ const Register = () => {
 
           <form onSubmit={handleSubmit}>
             <input
-              name="empId"
-              placeholder="Employee ID"
+              name="nic"
+              type="text"
+              value={formData.nic}
               onChange={handleChange}
               className="w-full border px-4 py-2 rounded-full mb-3"
+              placeholder="NIC Number"
               required
             />
             
@@ -281,6 +306,15 @@ const Register = () => {
               className="w-full border px-4 py-2 rounded-full mb-3"
               required
             />
+
+            <input
+              name="confirmPassword"
+              type="password"
+              placeholder="Confirm Password"
+              onChange={handleChange}
+              className="w-full border px-4 py-2 rounded-full mb-3"
+              required
+            />
              <p className="text-sm text-gray-600 mb-1 ml-1">
                   Select your role as per your position*,
              </p>
@@ -302,8 +336,8 @@ const Register = () => {
             
             <select
               name="districtId"
-              value={formData.districtId || ''}
-              onChange={(e) => setFormData({...formData, districtId: parseInt(e.target.value)})}
+              value={formData.districtId}
+              onChange={(e) => setFormData({...formData, districtId: e.target.value})}
               className="w-full border px-4 py-2 rounded-full mb-3"
               required
               disabled={isLoading || ['super_admin', 'super_user', 'technical_officer'].includes(formData.role)}
@@ -323,23 +357,30 @@ const Register = () => {
               </p>
             )}
             
-            {/* Skills dropdown - only shown for Technical Officer role */}
+            {/* Skills checkboxes - only shown for Technical Officer role */}
             {formData.role === 'technical_officer' && (
-              <select
-                name="skillId"
-                value={formData.skillId || ''}
-                onChange={handleSkillChange}
-                className="w-full border px-4 py-2 rounded-full mb-3"
-                required={formData.role === 'technical_officer'}
-                disabled={isLoading}
-              >
-                <option value="">-- Select Skill --</option>
-                {skills.map(skill => (
-                  <option key={skill.id} value={skill.id}>
-                    {skill.name}
-                  </option>
-                ))}
-              </select>
+              <div className="mb-3">
+                <p className="text-sm text-gray-600 mb-2 ml-1">Select your skills *</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {skills.map(skill => (
+                    <label key={skill.id} className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="skillId"
+                        value={skill.id}
+                        checked={formData.skillId === skill.id.toString()}
+                        onChange={handleSkillChange}
+                        className="rounded text-purple-600 focus:ring-purple-500"
+                        required={formData.role === 'technical_officer' && skills.length > 0}
+                      />
+                      <span className="text-sm">{skill.name}</span>
+                    </label>
+                  ))}
+                </div>
+                {formData.role === 'technical_officer' && !formData.skillId && (
+                  <p className="mt-1 text-sm text-red-500">Please select at least one skill</p>
+                )}
+              </div>
             )}
 
             <textarea
