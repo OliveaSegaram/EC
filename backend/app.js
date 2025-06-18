@@ -24,8 +24,8 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/root', require('./routes/rootRoutes'));
 app.use('/api/issues', require('./routes/issueRoutes'));
 app.use('/api/assignments', require('./routes/issueAssignmentRoutes'));
-app.use('/api/reviews', require('./routes/issueReviewRoutes')); // Add review routes
-app.use('/api', require('./routes/dataRoutes')); // Add data routes
+app.use('/api/reviews', require('./routes/issueReviewRoutes')); 
+app.use('/api', require('./routes/dataRoutes')); 
 
 // Set force to false to prevent dropping tables
 const syncOptions = { alter: false };
@@ -96,7 +96,7 @@ async function initializeDatabase() {
 const startServer = (port = 5000) => {
   const server = app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
-    console.log(`API Documentation: http://localhost:${port}/api-docs`);
+    
   }).on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       console.log(`Port ${port} is in use, trying port ${port + 1}...`);
