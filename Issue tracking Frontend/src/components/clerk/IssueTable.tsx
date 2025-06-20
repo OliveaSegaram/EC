@@ -228,26 +228,22 @@ const IssueTable: React.FC<IssueTableProps> = ({
     <div className="overflow-hidden bg-white rounded-xl shadow-sm border border-gray-200">
       {/* Edit Modal */}
       {showEditModal && selectedIssue && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">Edit Issue #{selectedIssue.id}</h3>
-                <button 
-                  onClick={() => setShowEditModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <IssueSubmit 
-                issueToEdit={selectedIssue} 
-                onSuccess={handleEditSuccess}
-                onCancel={() => setShowEditModal(false)}
-              />
-            </div>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowEditModal(false)}></div>
+          <div className="relative bg-transparent w-full max-w-4xl max-h-[90vh] overflow-y-auto z-10">
+            <button 
+              onClick={() => setShowEditModal(false)}
+              className="absolute right-4 top-4 z-20 text-gray-500 hover:text-gray-700 bg-white rounded-full p-1 shadow-md"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <IssueSubmit 
+              issueToEdit={selectedIssue} 
+              onSuccess={handleEditSuccess}
+              onCancel={() => setShowEditModal(false)}
+            />
           </div>
         </div>
       )}

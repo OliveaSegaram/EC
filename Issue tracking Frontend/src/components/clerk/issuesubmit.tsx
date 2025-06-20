@@ -303,10 +303,13 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
   };
    
   return (
-    <div className="max-w-xl mx-auto p-6 bg-white rounded-lg shadow-lg border-1-4 border-gray-300 mt-10 mb-10">
-      <h2 className="text-2xl font-semibold text-gray-800 text-center mb-6">
-        {issueToEdit ? 'Edit Issue' : 'Submit New Issue'}
-      </h2>
+    <div className="max-w-xl mx-auto rounded-lg overflow-hidden shadow-lg bg-white/80 backdrop-blur-sm mt-10 mb-10 border border-gray-200">
+      <div className="bg-gradient-to-r from-purple-600 to-purple-800 p-4">
+        <h2 className="text-2xl font-semibold text-white text-center">
+          {issueToEdit ? 'Edit Issue' : 'Submit New Issue'}
+        </h2>
+      </div>
+      <div className="p-6">
       <form onSubmit={handleSubmit}>
         {/* Device ID with Scan QR Button */}
         <div className="flex items-end gap-2">
@@ -474,6 +477,7 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 };

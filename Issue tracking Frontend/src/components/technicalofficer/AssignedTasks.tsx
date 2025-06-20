@@ -91,7 +91,7 @@ const AssignedTasks = () => {
 
   const handleOpenModal = (issue: Issue) => {
     setSelectedIssue(issue);
-    setComment(issue.comment || '');
+    setComment(''); 
     setStatus(issue.status);
     setShowModal(true);
   };
@@ -175,60 +175,73 @@ const AssignedTasks = () => {
         <h2 className="text-xl font-semibold text-gray-800 mb-6">Assigned Tasks</h2>
         
         {/* Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {/* Assigned to Technical Officer Card */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Assigned to Technician Card */}
           <div 
-            className={`p-4 rounded-lg shadow cursor-pointer transition-all ${activeFilter === 'Assigned to Technician' ? 'bg-purple-100 border-l-4 border-purple-500' : 'bg-white'}`}
+            className={`p-6 rounded-xl shadow-lg cursor-pointer transition-all transform hover:scale-[1.02] ${activeFilter === 'Assigned to Technician' ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-500' : 'bg-white hover:shadow-md'}`}
             onClick={() => setActiveFilter(activeFilter === 'Assigned to Technician' ? null : 'Assigned to Technician')}
           >
-            <h3 className="text-gray-600 font-medium">Assigned to You</h3>
-            <p className="text-2xl font-bold text-gray-800 mt-2">
-              {statusCounts['Assigned to Technician'] || 0}
-            </p>
+            <div className="flex items-center justify-between">
+              <div className="p-3 rounded-lg bg-blue-100 text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0111.357-3m1.764-3.643a5.5 5.5 0 010 7.286M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                {statusCounts['Assigned to Technician'] || 0} Tasks
+              </span>
+            </div>
+            <h3 className="mt-4 text-lg font-semibold text-gray-800">Assigned</h3>
+            <p className="mt-1 text-sm text-gray-500">Tasks waiting to be started</p>
           </div>
 
           {/* In Progress Card */}
           <div 
-            className={`p-4 rounded-lg shadow cursor-pointer transition-all ${activeFilter === 'In Progress' ? 'bg-yellow-100 border-l-4 border-yellow-500' : 'bg-white'}`}
+            className={`p-6 rounded-xl shadow-lg cursor-pointer transition-all transform hover:scale-[1.02] ${activeFilter === 'In Progress' ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-l-4 border-amber-500' : 'bg-white hover:shadow-md'}`}
             onClick={() => setActiveFilter(activeFilter === 'In Progress' ? null : 'In Progress')}
           >
-            <h3 className="text-gray-600 font-medium">In Progress</h3>
-            <p className="text-2xl font-bold text-gray-800 mt-2">
-              {statusCounts['In Progress'] || 0}
-            </p>
+            <div className="flex items-center justify-between">
+              <div className="p-3 rounded-lg bg-amber-100 text-amber-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <span className="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                {statusCounts['In Progress'] || 0} In Progress
+              </span>
+            </div>
+            <h3 className="mt-4 text-lg font-semibold text-gray-800">In Progress</h3>
+            <p className="mt-1 text-sm text-gray-500">Tasks currently being worked on</p>
           </div>
 
           {/* Resolved/Reopened Card */}
           <div 
-            className={`p-4 rounded-lg shadow cursor-pointer transition-all ${activeFilter === 'Resolved' || activeFilter === 'Reopened' ? 'bg-green-50 border-l-4 border-green-500' : 'bg-white'}`}
+            className={`p-6 rounded-xl shadow-lg cursor-pointer transition-all transform hover:scale-[1.02] ${activeFilter === 'Resolved' || activeFilter === 'Reopened' ? 'bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-500' : 'bg-white hover:shadow-md'}`}
             onClick={() => {
-              // Toggle between showing all issues and showing resolved/reopened
               if (activeFilter === 'Resolved' || activeFilter === 'Reopened') {
                 setActiveFilter(null);
               } else {
-                setActiveFilter('Resolved'); // This will trigger showing both statuses
+                setActiveFilter('Resolved');
               }
             }}
           >
-            <div className="flex justify-between items-center">
-              <h3 className="text-gray-600 font-medium">Resolved/Reopened</h3>
-              <div className="flex space-x-1">
-                <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+            <div className="flex items-center justify-between">
+              <div className="p-3 rounded-lg bg-green-100 text-green-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex space-x-2">
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   {statusCounts['Resolved'] || 0} Resolved
                 </span>
-                <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                   {statusCounts['Reopened'] || 0} Reopened
                 </span>
               </div>
             </div>
-            <div className="mt-2">
-              <p className="text-2xl font-bold text-gray-800">
-                {(statusCounts['Resolved'] || 0) + (statusCounts['Reopened'] || 0)}
-              </p>
-              <div className="flex items-center mt-1 text-xs text-gray-500">
-                <span>Total: {(statusCounts['Resolved'] || 0) + (statusCounts['Reopened'] || 0)}</span>
-              </div>
-            </div>
+            <h3 className="mt-4 text-lg font-semibold text-gray-800">Completed</h3>
+            <p className="mt-1 text-sm text-gray-500">Tasks that are resolved or need review</p>
           </div>
         </div>
 
@@ -275,8 +288,8 @@ const AssignedTasks = () => {
       </div>
       {/* Modal for status update */}
       {showModal && selectedIssue && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md mx-auto p-6">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 overflow-hidden">
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] mx-auto p-6 overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium">Update Task Status</h3>
               <button
@@ -292,13 +305,16 @@ const AssignedTasks = () => {
                 <p className="mt-1 text-gray-700">{selectedIssue.description}</p>
               </div>
               
-              {/* Approval Comment */}
+              {/* Show approval/assignment note or previous comments */}
               {selectedIssue.comment && (
                 <div className="p-3 bg-blue-50 border-l-4 border-blue-400 rounded-r">
                   <h4 className="text-sm font-medium text-blue-800 mb-1">
-                    {selectedIssue.status === 'Issue assigned by Super User' ? 'Assignment Note' : 'Approval Note'}
+                    {selectedIssue.status === 'Issue assigned by Super User' ? 'Assignment Note' : 
+                     selectedIssue.status === 'Approved' ? 'Approval Note' : 'Previous Note'}
                   </h4>
-                  <p className="text-sm text-gray-700">{selectedIssue.comment}</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {selectedIssue.comment}
+                  </p>
                 </div>
               )}
               
