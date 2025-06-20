@@ -108,7 +108,9 @@ exports.updateIssue = async (req, res) => {
       priorityLevel, 
       location, 
       underWarranty,
-      comment 
+      comment,
+      deviceId,
+      complaintType
     } = req.body;
 
     // Find the issue
@@ -128,15 +130,25 @@ exports.updateIssue = async (req, res) => {
         : statusUpdate;
     }
     
-    // Update other fields if provided
-    if (status) issue.status = status;
-    if (description) issue.description = description;
-    if (priorityLevel) issue.priorityLevel = priorityLevel;
-    if (location) issue.location = location;
-    if (typeof underWarranty !== 'undefined') issue.underWarranty = underWarranty;
+    // Update all fields
+    issue.deviceId = deviceId || issue.deviceId;
+    issue.complaintType = complaintType || issue.complaintType;
+    issue.description = description || issue.description;
+    issue.priorityLevel = priorityLevel || issue.priorityLevel;
+    issue.location = location || issue.location;
+    issue.underWarranty = underWarranty !== undefined ? underWarranty : issue.underWarranty;
+
+    // Handle file upload if present
+    if (req.file) {
+      // If there was a previous attachment, you might want to delete it here
+      // fs.unlinkSync(path.join(__dirname, '..', '..', 'uploads', issue.attachment));
+      issue.attachment = req.file.filename;
+    }
 
     // Save the updated issue
-    await issue.save();
+    await issue.save({
+      fields: ['deviceId', 'complaintType', 'description', 'priorityLevel', 'location', 'underWarranty', 'attachment', 'comment']
+    });
 
     res.status(200).json({
       message: 'Issue updated successfully',
@@ -190,32 +202,42 @@ exports.reopenIssue = async (req, res) => {
       return res.status(404).json({ message: 'Issue not found' });
     }
 
-    // Check if the user has permission to reopen this issue
-    // Only allow reopening if the issue is in a state that can be reopened
-    const allowedStatuses = ['Rejected', 'Completed', 'Closed'];
-    if (!allowedStatuses.includes(issue.status)) {
+    // Only allow reopening if the issue is in 'Completed' status
+    if (issue.status !== 'Completed') {
       return res.status(400).json({ 
-        message: `Cannot reopen an issue with status: ${issue.status}` 
+        message: `Only completed issues can be reopened. Current status: ${issue.status}` 
       });
     }
 
     // Format the reopen comment with timestamp and user info
     const timestamp = new Date().toISOString();
     const userInfo = req.user.username ? ` (${req.user.username})` : '';
-    const reopenComment = comment || 'Issue reopened by subject clerk';
-    const statusUpdate = `${reopenComment}${userInfo} at ${timestamp}`;
+    const reopenComment = comment || 'Issue reopened and sent for DC approval';
+    const statusUpdate = `WORKFLOW RESTARTED: ${reopenComment}${userInfo} at ${timestamp}`;
     
-    // Update the issue
-    issue.status = 'Reopened';
+    // Update the issue to restart the workflow
+    issue.status = 'Pending';
     issue.comment = issue.comment 
       ? `${issue.comment}\n\n${statusUpdate}`
       : statusUpdate;
     issue.reopenedAt = new Date();
     issue.reopenedBy = userId;
+    
+    // Reset approval fields to restart the workflow
+    issue.approvedBy = null;
+    issue.approvedAt = null;
+    issue.rejectedBy = null;
+    issue.rejectedAt = null;
+    issue.rejectionReason = null;
+    issue.completedBy = null;
+    issue.completedAt = null;
+    issue.assignedTo = null;
+    issue.assignedAt = null;
+    
     await issue.save();
 
     res.status(200).json({
-      message: 'Issue reopened successfully',
+      message: 'Issue reopened successfully and sent for DC approval',
       issue
     });
   } catch (error) {

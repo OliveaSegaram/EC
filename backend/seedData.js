@@ -46,7 +46,7 @@ async function seedDatabase() {
   const db = require('./models');
   const bcrypt = require('bcrypt');
   
-  try {
+  {/*try {
     console.log('Seeding database...');
     
     // Create roles
@@ -98,7 +98,7 @@ async function seedDatabase() {
   } catch (error) {
     console.error('Error seeding database:', error);
     throw error;
-  }
+  }*/}
 }
 
 // Run the seed function if this file is executed directly

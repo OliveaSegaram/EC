@@ -30,7 +30,7 @@ router.get('/', issueController.getAllIssues);
 router.get('/:id', issueController.getIssueDetails);
 
 // Update issue
-router.put('/:id', issueController.updateIssue);
+router.put('/:id', upload.single('attachment'), issueController.updateIssue);
 
 // Delete issue
 router.delete('/:id', issueController.deleteIssue);

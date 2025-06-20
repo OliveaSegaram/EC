@@ -12,7 +12,10 @@ const register = async (req, res) => {
   console.log('Registration request file:', req.file);
   
   const schema = Joi.object({
-    nic: Joi.string().required(),
+    nic: Joi.string()
+      .required()
+      .pattern(/^(\d{9}[vVxX]|\d{12})$/)
+      .message('NIC must be either 9 digits followed by V/X or exactly 12 digits'),
     username: Joi.string().required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
