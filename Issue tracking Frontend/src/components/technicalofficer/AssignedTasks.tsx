@@ -322,7 +322,7 @@ const AssignedTasks = () => {
                 <div className="mt-4">
                   <h4 className="text-sm font-medium text-gray-500 mb-2">Attachment</h4>
                   <a 
-                    href={`${backendUrl}/uploads/${selectedIssue.attachment}`} 
+                    href={`${backendUrl}/${selectedIssue.attachment}`} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 underline flex items-center"

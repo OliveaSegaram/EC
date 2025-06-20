@@ -14,7 +14,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // Add this line to handle form data
+app.use(express.urlencoded({ extended: true })); 
 
 // Serve uploads under /api/uploads to match the frontend's backendUrl
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));

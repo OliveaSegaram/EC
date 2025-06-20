@@ -48,11 +48,11 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
 
   const handleViewAttachment = () => {
     if (issue.attachment) {
-      window.open(`${backendUrl}/uploads/${issue.attachment}`, '_blank');
+      window.open(`${backendUrl}/${issue.attachment}`, '_blank');
     }
   };
 
-
+  
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
