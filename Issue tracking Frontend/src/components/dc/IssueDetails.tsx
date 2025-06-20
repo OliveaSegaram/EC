@@ -158,8 +158,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                 </div>
               </div>
 
-              {/* Rejection Reason (if exists) */}
-              {selectedIssue.comment && (
+              {/* Rejection Reason (if exists and rejected by DC) */}
+              {selectedIssue.status === ISSUE_STATUS.DC_REJECTED && selectedIssue.comment && (
                 <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r">
                   <div className="flex">
                     <div className="flex-shrink-0">

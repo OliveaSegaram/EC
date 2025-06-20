@@ -25,6 +25,7 @@ interface Issue {
   submittedAt: string;
   updatedAt: string;
   comment?: string;  // Add comment as an optional string
+  attachment?: string | null;  
   user: {
     id: number;
     username: string;
@@ -363,6 +364,26 @@ const Approvals = () => {
             {/* Main Content */}
             <div className="p-6">
 
+              {/* Attachment Section */}
+              {selectedIssue.attachment && (
+                <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-500 mb-2">Attachment</h4>
+                  <div className="mt-1 flex items-center">
+                    <a 
+                      href={`${backendUrl}/${selectedIssue.attachment}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      View Attachment
+                    </a>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -397,13 +418,6 @@ const Approvals = () => {
 
                 <div className="border-t border-gray-200 pt-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Submitted By</h4>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedIssue.user?.username || 'N/A'}
-                        {selectedIssue.user?.email && ` (${selectedIssue.user.email})`}
-                      </p>
-                    </div>
                     <div>
                       <h4 className="text-sm font-medium text-gray-500">Submission Date</h4>
                       <p className="mt-1 text-sm text-gray-900">

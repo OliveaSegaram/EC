@@ -336,6 +336,7 @@ const IssuePanel: React.FC = () => {
         onClose={() => setShowCommentModal(false)}
         onSubmit={(issue) => {
           if (commentIssue) {
+            setShowApproveModal(false); 
             handleRejectIssue(issue.id);
             setShowCommentModal(false);
           }
@@ -354,11 +355,9 @@ const IssuePanel: React.FC = () => {
         isOpen={showApproveModal}
         onClose={() => setShowApproveModal(false)}
         onSubmit={async () => {
-          if (commentIssue) {
-            const success = await handleApproveIssue(commentIssue, approveComment);
-            if (success) {
-              setShowApproveModal(false);
-            }
+         if (commentIssue) {
+           setShowApproveModal(false); 
+           await handleApproveIssue(commentIssue, approveComment);
           }
         }}
         comment={approveComment}

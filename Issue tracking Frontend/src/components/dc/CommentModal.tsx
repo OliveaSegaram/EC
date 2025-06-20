@@ -46,7 +46,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
     ? (isViewOnly ? 'Rejection Comment' : 'Reject Issue')
     : (isViewOnly ? 'Approval Comment' : 'Approve Issue');
     
-  const commentLabel = isReject ? 'Rejection Reason' : 'Approval Reason';
+  const commentLabel = isReject ? 'Process' : 'Approval Reason';
   const placeholder = isReject 
     ? 'Enter reason for rejection...' 
     : 'Enter any additional comments (optional)...';
