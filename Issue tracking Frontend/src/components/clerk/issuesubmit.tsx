@@ -178,8 +178,8 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
       // Handle location based on user type
       if (isHeadOffice && issue.branch) {
         // For head office, we'll use a special location ID or handle it differently
-        // This is a placeholder - you might need to adjust based on your requirements
-        formData.location = '1'; // Example: Using 1 for head office
+        
+        formData.location = '1'; 
       } else if (userDistrict) {
         // Use the district ID for the location
         formData.location = userDistrict.id.toString();
@@ -407,7 +407,7 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
               required
               className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             >
-              <option value="">-- Select Branch --</option>
+              <option value="">Select Branch *</option>
               {headOfficeBranches.map(branch => (
                 <option key={branch} value={branch}>{branch}</option>
               ))}
@@ -425,7 +425,7 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
             id="attachment"
             name="attachment"
             onChange={handleFileChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full p-2 border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           />
         </div>
 

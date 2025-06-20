@@ -47,7 +47,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
   // Function to handle attachment view
   const handleViewAttachment = () => {
     if (selectedIssue.attachment) {
-      window.open(`${backendUrl}/${selectedIssue.attachment}`, '_blank');
+      window.open(`${backendUrl}/uploads/${selectedIssue.attachment}`, '_blank');
     }
   };
 

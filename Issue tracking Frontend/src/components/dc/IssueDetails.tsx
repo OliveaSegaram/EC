@@ -45,7 +45,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
   showModal,
   setShowModal,
   setSelectedIssue,
-  getPriorityColor, // Keeping for backward compatibility
+  getPriorityColor, 
   handleApproveIssue,
   openRejectCommentModal,
   isDashboardView = false
@@ -57,7 +57,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
   // Function to handle attachment view
   const handleViewAttachment = () => {
     if (selectedIssue.attachment) {
-      window.open(`${backendUrl}/${selectedIssue.attachment}`, '_blank');
+      window.open(`${backendUrl}/uploads/${selectedIssue.attachment}`, '_blank');
     }
   };
 

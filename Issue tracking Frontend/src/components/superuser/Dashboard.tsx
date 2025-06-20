@@ -416,7 +416,7 @@ const Dashboard = () => {
                         </div>
                         <div className="ml-4">
                           <a 
-                            href={`${backendUrl}${selectedIssue.attachment}`} 
+                            href={`${backendUrl}/uploads/${selectedIssue.attachment}`} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-sm font-medium text-blue-600 hover:text-blue-500"

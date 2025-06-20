@@ -15,7 +15,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Add this line to handle form data
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Serve uploads under /api/uploads to match the frontend's backendUrl
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const db = require('./models');
 const seedRootUser = require('./seeders/seedRootUser');
