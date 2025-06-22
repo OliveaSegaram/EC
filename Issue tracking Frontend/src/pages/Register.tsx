@@ -26,7 +26,6 @@ const Register = () => {
   useEffect(() => {
     const fetchData = async () => {
       
-        console.log('This is backend url:',backendUrl)
       try {
         const [districtsRes, skillsRes] = await Promise.all([
           fetch(`${backendUrl}/districts`),

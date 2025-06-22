@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 
 // Create Axios instance with base URL from environment or default
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api',
+  baseURL: 'http://localhost:5000/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

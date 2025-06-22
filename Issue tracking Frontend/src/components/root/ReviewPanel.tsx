@@ -1,18 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { 
   FiEye, 
   FiCheck, 
   FiX, 
-  FiClock, 
-  FiCheckCircle, 
-  FiCalendar,
-  FiPaperclip
+  FiCalendar, 
+  FiClock,
+  FiPaperclip,
+  FiCheckCircle,
+  FiRefreshCw,
+  FiMessageSquare
 } from 'react-icons/fi'; 
 import { toast } from 'react-toastify';
-import api from '../../services/api';
-
-// Get the backend URL from environment variables
-const backendUrl = import.meta.env.VITE_APP_BACKEND_URL;
+import { AppContext } from '../../provider/AppContext';
 
 interface AssignedUser {
   id: number;
@@ -23,7 +22,8 @@ interface AssignedUser {
 interface ReviewIssue {
   id: number;
   deviceId: string;
-  issueType: string;
+  complaintType: string;
+  issueType?: string;
   status: string;
   priorityLevel: string;
   location: string;
@@ -33,7 +33,7 @@ interface ReviewIssue {
   submittedAt: string;
   updatedAt: string;
   assignedTo: AssignedUser | null;
-  lastUpdatedStatus?: string; // For backward compatibility
+  lastUpdatedStatus?: string;
 }
 
 // Component to handle text truncation with read more/less
@@ -79,11 +79,15 @@ const TruncatedText: React.FC<{ text: string; maxLength: number }> = ({ text, ma
 };
 
 const ReviewPanel: React.FC = () => {
+  const appContext = useContext(AppContext);
+  if (!appContext) throw new Error('AppContext is not available');
+  
+  const { backendUrl } = appContext;
   const [issues, setIssues] = useState<ReviewIssue[]>([]);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<ReviewIssue | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [comment, setComment] = useState('');
-  const [isConfirming, setIsConfirming] = useState(false);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -116,34 +120,72 @@ const ReviewPanel: React.FC = () => {
 
   const fetchIssues = useCallback(async () => {
     try {
-      
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('Authentication token not found');
       }
       
-      // Use the centralized API service
-      const response = await api.get('/reviews/review');
+      const url = `${backendUrl}/reviews/review`;
+      console.log('Fetching issues from:', url);
       
-      // Handle different response formats
-      const issues = Array.isArray(response.data?.issues) 
-        ? response.data.issues 
-        : response.data?.data?.issues || [];
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include' // Include cookies for session
+      });
       
-      if (issues.length > 0 || response.data?.success) {
+      console.log('Response status:', response.status, response.statusText);
+      
+      // Get response text first to handle both JSON and HTML responses
+      const responseText = await response.text();
+      console.log('Response status:', response.status, response.statusText);
+      console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
+      console.log('Response text (first 500 chars):', responseText.substring(0, 500));
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response as JSON. Full response:', responseText);
+        if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html>')) {
+          throw new Error('Received HTML instead of JSON. The server might be returning an error page.');
+        } else {
+          throw new Error(`Received invalid JSON response: ${responseText.substring(0, 100)}...`);
+        }
+      }
+      
+      if (!response.ok) {
+        console.error('API Error:', data);
+        throw new Error(data?.message || `Server returned ${response.status}: ${response.statusText}`);
+      }
+      
+      // Handle case where no issues are found
+      if (data?.message === 'Issue not found') {
+        console.log('No issues found for review');
+        setIssues([]);
+        return [];
+      }
+      
+      const issues = Array.isArray(data?.issues) ? data.issues : [];
+      
+      if (issues.length > 0 || data?.success) {
+        console.log('Fetched issues:', issues.length);
         setIssues(issues);
         return issues;
       } else {
-        throw new Error(response.data?.message || 'No issues found for review');
+        console.log('No issues found in response');
+        setIssues([]);
+        return [];
       }
     } catch (error: any) {
       console.error('Error fetching issues:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to fetch issues for review';
+      const errorMessage = error.message || 'Failed to fetch issues for review';
       toast.error(errorMessage);
       setIssues([]);
       throw error;
-    } finally {
-      // Loading complete
     }
   }, []);
 
@@ -164,27 +206,37 @@ const ReviewPanel: React.FC = () => {
     try {
       console.log('Confirming review for issue:', issueId, 'with status:', selectedIssue.status);
       
-      const response = await api.post(
-        `/reviews/${issueId}/confirm`,
-        { 
-          isApproved: true,
-          comment: comment || undefined 
-        }
-      );
-
-      console.log('Review confirmation response:', response.data);
-      
-      if (response.data.success) {
-        toast.success(response.data.message || 'Issue confirmed successfully');
-        setShowModal(false);
-        setSelectedIssue(null);
-        setComment('');
-        
-        // Refresh the issues list
-        await fetchIssues();
-      } else {
-        throw new Error(response.data.message || 'Failed to confirm review');
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found');
       }
+      
+      const response = await fetch(`${backendUrl}/reviews/${issueId}/confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          isApproved: true,
+          comment: comment || ''
+        })
+      });
+
+      const data = await response.json();
+      console.log('Review confirmation response:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to confirm review');
+      }
+      
+      toast.success(data.message || 'Issue confirmed successfully');
+      setShowModal(false);
+      setSelectedIssue(null);
+      setComment('');
+      
+      // Refresh the issues list
+      await fetchIssues();
     } catch (error: any) {
       console.error('Error confirming review:', error);
       const errorMessage = error.response?.data?.message || 
@@ -192,7 +244,7 @@ const ReviewPanel: React.FC = () => {
                          'Failed to confirm review';
       
       // If the issue status is not in a reviewable state, refresh the list
-      if (error.response?.status === 400) {
+      if (error.message.includes('status is not in a reviewable state')) {
         toast.warning(errorMessage);
         await fetchIssues();
       } else {
@@ -226,7 +278,7 @@ const ReviewPanel: React.FC = () => {
             {issues.map((issue) => (
               <tr key={issue.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{issue.id}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.issueType}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.complaintType || 'N/A'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getStatusBadge(issue.status)}
                 </td>
@@ -251,32 +303,38 @@ const ReviewPanel: React.FC = () => {
       </div>
       {/* Modal for issue details */}
       {showModal && selectedIssue && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-0 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white overflow-hidden">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center py-8">
+          <div className="relative border w-11/12 max-w-3xl shadow-lg rounded-lg bg-white overflow-hidden">
             {/* Header with gradient background */}
-            <div className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-600 to-purple-800 text-white">
-              <div className="flex items-center">
-                <h3 className="text-lg font-semibold">Issue #{selectedIssue.id}</h3>
-                <span className="ml-3 px-3 py-1 rounded-full text-xs bg-white bg-opacity-20">
+            <div className="bg-gradient-to-r from-purple-700 to-purple-900 text-white p-4 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Issue Details</h3>
+                  <p className="text-xs text-purple-100 mt-0.5">ID: #{selectedIssue.id}</p>
+                </div>
+                <button 
+                  onClick={() => { setShowModal(false); setSelectedIssue(null); }}
+                  className="text-purple-200 hover:text-white focus:outline-none transition-colors duration-200 p-1"
+                >
+                  <span className="sr-only">Close</span>
+                  <FiX className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="mt-2">
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/20">
                   {getStatusBadge(selectedIssue.status)}
                 </span>
               </div>
-              <button
-                onClick={() => { setShowModal(false); setSelectedIssue(null); }}
-                className="text-white hover:text-gray-200 text-xl font-semibold"
-              >
-                <FiX size={24} />
-              </button>
             </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 sm:p-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Device ID</h4>
                   <p className="mt-1 text-gray-900 font-medium">{selectedIssue.deviceId}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Issue Type</h4>
-                  <p className="mt-1 text-gray-900">{selectedIssue.issueType}</p>
+                  <p className="mt-1 text-gray-900">{selectedIssue.complaintType || 'N/A'}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Submitted At</h4>
@@ -293,32 +351,116 @@ const ReviewPanel: React.FC = () => {
                   </p>
                 </div>
                 <div className="md:col-span-2">
-                  <h4 className="text-sm font-medium text-gray-500">Comment</h4>
-                  <p className="mt-1 text-gray-900 p-3 bg-gray-50 rounded">
-                    {selectedIssue.comment || 'No comment provided'}
-                  </p>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-700">Activity Log</h4>
+                    <span className="text-xs text-gray-500">
+                      {selectedIssue.updatedAt && `Last updated: ${new Date(selectedIssue.updatedAt).toLocaleString()}`}
+                    </span>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 max-h-96 overflow-y-auto">
+                    {selectedIssue.comment ? (
+                      <div className="space-y-4">
+                        {selectedIssue.comment.split('\n\n').filter(block => block.trim() !== '').map((commentBlock, blockIndex) => {
+                          // Extract timestamp from the end of the comment (format: at 2025-06-22T06:04:50.143Z)
+                          const timestampMatch = commentBlock.match(/at (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.?\d*Z)$/);
+                          let timestamp = null;
+                          let commentText = commentBlock;
+                          
+                          if (timestampMatch) {
+                            timestamp = new Date(timestampMatch[1] || timestampMatch[0].substring(3)); // Remove 'at ' prefix
+                            commentText = commentBlock.substring(0, timestampMatch.index).trim();
+                          }
+                          
+                          // Check if this is a status update
+                          const isStatusUpdate = commentText.toLowerCase().includes('status updated to');
+                          const statusMatch = commentText.match(/status updated to ([^\s]+)/i);
+                          const status = statusMatch ? statusMatch[1] : null;
+                          
+                          return (
+                            <div 
+                              key={blockIndex} 
+                              className={`flex gap-3 ${isStatusUpdate ? 'items-center' : 'items-start'}`}
+                            >
+                              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                                isStatusUpdate ? 'bg-blue-500' : 'bg-purple-500'
+                              }`}>
+                                {isStatusUpdate ? (
+                                  <FiRefreshCw size={16} />
+                                ) : (
+                                  <FiMessageSquare size={16} />
+                                )}
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-baseline justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {isStatusUpdate ? 'Status Update' : 'Comment'}
+                                    </span>
+                                    {status && (
+                                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {status}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                </div>
+                                
+                                <div className="relative group">
+                                  <div className="text-sm text-gray-700 whitespace-pre-wrap break-words pr-2">
+                                    {commentText}
+                                    {timestamp && (
+                                      <span className="absolute bottom-0 right-0 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 px-1 rounded">
+                                        {new Date(timestamp).toLocaleString('en-US', {
+                                          month: 'numeric',
+                                          day: 'numeric',
+                                          year: 'numeric',
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                          second: '2-digit',
+                                          hour12: true
+                                        })}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <FiMessageSquare className="mx-auto h-10 w-10 text-gray-300" />
+                        <p className="mt-2 text-sm text-gray-500">No activity yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Updates will appear here</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {selectedIssue.attachment && (
                   <div className="md:col-span-2">
                     <h4 className="text-sm font-medium text-gray-500">Attachment</h4>
                     <a 
-                      href={`${backendUrl}/${selectedIssue.attachment}`} 
+                      href={`${backendUrl}/${selectedIssue.attachment.replace(/^uploads\//, '')}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                      className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
-                      <FiPaperclip className="mr-2" />
+                      <FiPaperclip className="-ml-1 mr-2 h-5 w-5 text-gray-400" />
                       View Attachment
                     </a>
                   </div>
                 )}
               </div>
               
-              <div className="mt-8 pt-4 border-t border-gray-200">
+              <div className="mt-6 pt-3 border-t border-gray-200">
                 <div className="flex justify-center">
                   <button
                     onClick={() => handleConfirm(selectedIssue.id)}
-                    className={`flex items-center justify-center bg-purple-600 text-white hover:bg-purple-700 rounded-md transition-all shadow-sm hover:shadow py-2 px-6 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 ${isConfirming ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex items-center justify-center bg-gradient-to-r from-purple-600 to-purple-800 text-white hover:from-purple-700 hover:to-purple-900 rounded-lg transition-all shadow-md hover:shadow-lg py-2.5 px-8 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`}
                     disabled={isConfirming}
                   >
                     <FiCheck className="mr-2 h-5 w-5" />

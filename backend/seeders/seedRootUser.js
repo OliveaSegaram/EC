@@ -5,24 +5,37 @@ const seedRootUser = async () => {
   try {
     let rootRole = await Role.findOne({ where: { name: 'root' } });
     if (!rootRole) rootRole = await Role.create({ name: 'root' });
-
-    const rootUser = await User.findOne({ where: { roleId: rootRole.id } });
-    if (rootUser) return console.log(' Root user already exists.');
-
-    const hashedPassword = await bcrypt.hash(process.env.ROOT_PASSWORD, 10);
-
-    await User.create({
-      nic: process.env.ROOT_NIC || 'ROOT_001',
+  
+    // Check if root user exists
+    let rootUser = await User.findOne({ where: { roleId: rootRole.id } });
+  
+    const userData = {
+      nic: process.env.ROOT_NIC,
       username: 'rootadmin',
       email: process.env.ROOT_EMAIL,
-      password: hashedPassword,
       roleId: rootRole.id,
       isVerified: true,
-      districtId: null,  
-      skillId: null      
-    });
+      districtId: null,
+      skillId: null
+    };
 
-    console.log('Root user seeded.');
+    if (rootUser) {
+      // Update existing root user if NIC or email changed
+      if (rootUser.nic !== process.env.ROOT_NIC || rootUser.email !== process.env.ROOT_EMAIL) {
+        await rootUser.update(userData);
+        console.log('Root user updated with new NIC/email');
+      } else {
+        console.log('Root user already exists and is up to date');
+      }
+    } else {
+      // Create new root user if doesn't exist
+      const hashedPassword = await bcrypt.hash(process.env.ROOT_PASSWORD, 10);
+      await User.create({
+        ...userData,
+        password: hashedPassword
+      });
+      console.log('New root user created');
+    }
   } catch (err) {
     console.error('Error seeding root user:', err.message);
   }

@@ -46,29 +46,22 @@ async function seedDatabase() {
   const db = require('./models');
   const bcrypt = require('bcrypt');
   
-  {/*try {
+  try {
     console.log('Seeding database...');
     
-    // Create roles
-    console.log('Creating roles...');
-    const adminRole = await db.Role.findOrCreate({
-      where: { name: 'admin' },
-      defaults: { name: 'admin' }
-    });
-    
-    // Create default skill for admin
+    // Create default skill
     console.log('Creating default skill...');
     const defaultSkill = await db.Skill.findOrCreate({
       where: { name: 'Administration' },
       defaults: { name: 'Administration' }
     });
     
-    // Create default district
+    {/*// Create default district
     console.log('Creating default district...');
     const defaultDistrict = await db.District.findOrCreate({
       where: { name: 'Head Office' },
       defaults: { name: 'Head Office' }
-    });
+    });*/}
     
     // Root user creation is handled in seedRootUser.js
 
@@ -98,7 +91,7 @@ async function seedDatabase() {
   } catch (error) {
     console.error('Error seeding database:', error);
     throw error;
-  }*/}
+  }
 }
 
 // Run the seed function if this file is executed directly

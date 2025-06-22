@@ -3,7 +3,6 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 require('dotenv').config();
-const PORT = process.env.PORT || 5000;
 
 // Configure CORS
 const corsOptions = {
@@ -12,108 +11,62 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
+// Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); 
+app.use(express.urlencoded({ extended: true }));
 
-// Serve uploads under /api/uploads to match the frontend's backendUrl
+// Serve uploads
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Import models and seed functions
 const db = require('./models');
 const seedRootUser = require('./seeders/seedRootUser');
+const { seedDatabase } = require('./seedData');
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/root', require('./routes/rootRoutes'));
 app.use('/api/issues', require('./routes/issueRoutes'));
 app.use('/api/assignments', require('./routes/issueAssignmentRoutes'));
-app.use('/api/reviews', require('./routes/issueReviewRoutes')); 
-app.use('/api', require('./routes/dataRoutes')); 
+app.use('/api/reviews', require('./routes/issueReviewRoutes'));
+app.use('/api', require('./routes/dataRoutes'));
 
-// Set force to false to prevent dropping tables
-const syncOptions = { alter: false };
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!', error: err.message });
+});
 
-// Function to initialize the database and start the server
-async function initializeDatabase() {
+// Initialize database and start server
+async function startServer() {
   try {
-    // First, check if we need to add the nic column to existing users
-    const [results] = await db.sequelize.query(
-      "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'nic'"
-    );
+    // Sync models with database (only creates tables if they don't exist)
+    console.log('Syncing database...');
+    await db.sequelize.sync();
+    console.log(' Database synced');
     
-    if (results.length === 0) {
-      console.log('The nic column does not exist yet. Adding it to existing users...');
-      
-      // Get all existing users
-      const [users] = await db.sequelize.query('SELECT id FROM Users');
-      
-      if (users.length > 0) {
-        console.log(`Found ${users.length} existing users that need nic values`);
-        
-        // Add nic column without constraints first
-        await db.sequelize.query(
-          "ALTER TABLE Users ADD COLUMN nic VARCHAR(20) DEFAULT 'TEMP'"
-        );
-        
-        // Update each user with a unique nic
-        for (let i = 0; i < users.length; i++) {
-          const user = users[i];
-          const tempNic = `NIC${user.id.toString().padStart(5, '0')}`;
-          
-          await db.sequelize.query(
-            "UPDATE Users SET nic = ? WHERE id = ?",
-            {
-              replacements: [tempNic, user.id]
-            }
-          );
-        }
-        
-        // Now add the unique constraint
-        await db.sequelize.query(
-          "ALTER TABLE Users MODIFY COLUMN nic VARCHAR(20) NOT NULL UNIQUE"
-        );
-        
-        console.log('Successfully added nic column with unique values');
-      }
-    } else {
-      console.log('nic column already exists');
-    }
+    // Seed initial data (districts, skills, etc.)
+    console.log('Seeding initial data...');
+    await seedDatabase();
+    console.log('Initial data seeded');
     
-    // Now sync the database normally
-    await db.sequelize.sync(syncOptions);
-    console.log('Database synced');
-    
-    // Seed the root user
+    // Seed root user if it doesn't exist
+    console.log('Seeding root user...');
     await seedRootUser();
+    console.log('Root user seeded');
     
     // Start the server
+    const PORT = process.env.PORT;
     app.listen(PORT, () => {
-      console.log(`Server running on ${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
-  } catch (err) {
-    console.error('Error initializing database:', err);
+    
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
   }
 }
-initializeDatabase();
-// Initialize the database and start the server
-{/*const startServer = (port = 5000) => {
-  const server = app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-    
-  }).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.log(`Port ${port} is in use, trying port ${port + 1}...`);
-      startServer(port + 1);
-    } else {
-      console.error('Server error:', err);
-      process.exit(1);
-    }
-  });
-};
 
-
-  .then(() => startServer(process.env.PORT || 5000))
-  .catch(error => {
-    console.error('Failed to initialize database:', error);
-    process.exit(1);
-  });*/}
+// Start the application
+startServer();

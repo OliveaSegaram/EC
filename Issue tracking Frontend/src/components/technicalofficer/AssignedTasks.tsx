@@ -1,7 +1,6 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { FiEdit } from 'react-icons/fi';
-import api from '../../services/api';
 import { AppContext } from '../../provider/AppContext';
 
 interface Issue {
@@ -15,13 +14,6 @@ interface Issue {
   submittedAt: string;
   comment?: string;
   attachment?: string;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  issues?: T[];
-  [key: string]: any;
 }
 
 const AssignedTasks = () => {
@@ -78,16 +70,33 @@ const AssignedTasks = () => {
     return acc;
   }, {} as Record<string, number>);
 
-  const fetchAssignedIssues = async () => {
+  const fetchAssignedIssues = useCallback(async () => {
     try {
-      const response = await api.get('/assignments/my-issues');
-      console.log('Assigned tasks response:', response.data);
-      setIssues(response.data.issues || []);
-    } catch (error) {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await fetch(`${backendUrl}/assignments/my-issues`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch assigned tasks');
+      }
+
+      const data = await response.json();
+      console.log('Assigned tasks response:', data);
+      setIssues(data.issues || []);
+    } catch (error: any) {
       console.error('Error fetching assigned tasks:', error);
-      // Error is already handled by the API interceptor
+      toast.error(error.message || 'Failed to fetch assigned tasks');
     }
-  };
+  }, [backendUrl]);
 
   const handleOpenModal = (issue: Issue) => {
     setSelectedIssue(issue);
@@ -105,9 +114,9 @@ const AssignedTasks = () => {
       
       // Determine which endpoint to use based on status
       if (status === 'In Progress') {
-        endpoint = `/assignments/${selectedIssue.id}/start`;
+        endpoint = `${backendUrl}/assignments/${selectedIssue.id}/start`;
       } else if (status === 'Resolved') {
-        endpoint = `/assignments/${selectedIssue.id}/resolve`;
+        endpoint = `${backendUrl}/assignments/${selectedIssue.id}/resolve`;
         requestData = { ...requestData, resolutionDetails: comment };
       } else {
         throw new Error('Invalid status');
@@ -116,41 +125,40 @@ const AssignedTasks = () => {
       console.log('Sending request to:', endpoint);
       console.log('Request data:', requestData);
 
-      const response = await api.post<ApiResponse<Issue>>(endpoint, requestData);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      const data = await response.json();
+      console.log('Update response:', data);
       
-      console.log('Update response:', response.data);
-      toast.success(response.data.message || 'Status updated successfully');
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update status');
+      }
+
+      toast.success(data.message || 'Status updated successfully');
       setShowModal(false);
       fetchAssignedIssues();
     } catch (error: any) {
       console.error('Error updating status:', error);
       
-      // Handle different types of errors
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.error('Error response data:', error.response.data);
-        console.error('Error status:', error.response.status);
-        console.error('Error headers:', error.response.headers);
-        
-        if (error.response.status === 401 || error.response.status === 403) {
-          toast.error('Session expired. Please log in again.');
-          localStorage.removeItem('token');
-          window.location.href = '/login';
-          return;
-        }
-        
-        const errorMessage = error.response.data?.message || 
-                           error.response.statusText || 
-                           'Failed to update status';
-        toast.error(errorMessage);
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error('No response received:', error.request);
-        toast.error('No response from server. Please check your connection.');
+      if (error.message === 'Authentication token not found' || 
+          error.message.includes('401') || 
+          error.message.includes('403')) {
+        toast.error('Session expired. Please log in again.');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
       } else {
-        // Something happened in setting up the request that triggered an Error
-        console.error('Error setting up request:', error.message);
         toast.error(error.message || 'Failed to update status');
       }
     }
@@ -322,7 +330,7 @@ const AssignedTasks = () => {
                 <div className="mt-4">
                   <h4 className="text-sm font-medium text-gray-500 mb-2">Attachment</h4>
                   <a 
-                    href={`${backendUrl}/${selectedIssue.attachment}`} 
+                    href={`${backendUrl}/${selectedIssue.attachment.replace(/^uploads\//, '')}`} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 underline flex items-center"

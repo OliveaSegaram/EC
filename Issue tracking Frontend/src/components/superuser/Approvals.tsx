@@ -24,7 +24,7 @@ interface Issue {
   status: string;
   submittedAt: string;
   updatedAt: string;
-  comment?: string;  // Add comment as an optional string
+  comment?: string;  
   attachment?: string | null;  
   user: {
     id: number;
