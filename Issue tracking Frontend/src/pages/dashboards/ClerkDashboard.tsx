@@ -1,6 +1,7 @@
-import  { useState, useEffect, useCallback, useRef, useContext } from 'react';
+import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiHome, FiAlertCircle, FiBell, FiArrowLeft, FiMapPin } from 'react-icons/fi'; // Removed unused: FiPlus, FiLogOut
+import { useTranslation } from 'react-i18next';
+import { FiHome, FiAlertCircle, FiBell, FiArrowLeft, FiMapPin } from 'react-icons/fi';
 import axios from 'axios';
 import { AppContext } from '../../provider/AppContext';
 import userAvatar from '../../assets/icons/login/User.svg';
@@ -23,6 +24,7 @@ interface Issue {
 }
 
 const ClerkDashboard = () => {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -245,7 +247,7 @@ const ClerkDashboard = () => {
         {/* Sidebar Header */}
         <div className="flex items-center space-x-2 px-4 py-4 border-b">
           <FiMapPin className="text-purple-700" size={24} />
-          <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">Issue Tracker</span>
+          <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">{t('Issue Tracker')}</span>
         </div>
         {/* Sidebar Navigation */}
         <nav className="flex flex-col space-y-3 px-2 py-4">
@@ -257,7 +259,7 @@ const ClerkDashboard = () => {
                 : 'hover:bg-purple-200 text-gray-700'
             }`}
           >
-            <FiHome className="mr-2" size={20} /> Dashboard
+            <FiHome className="mr-2" size={20} /> {t('Dashboard')}
           </button>
           <button
             onClick={() => setActiveTab('issues')}
@@ -267,12 +269,12 @@ const ClerkDashboard = () => {
                 : 'hover:bg-purple-200 text-gray-700'
             }`}
           >
-            <FiAlertCircle className="mr-2" size={20} /> Issues
+            <FiAlertCircle className="mr-2" size={20} /> {t('Issues')}
           </button>
         </nav>
         {/* Sidebar Footer */}
         <div className="mt-auto px-4 py-4 border-t">
-          <span className="text-gray-500 text-sm text-center block">Election Commission Of Sri Lanka</span>
+          <span className="text-gray-500 text-sm text-center block">{t('Election Commission Of Sri Lanka')}</span>
         </div>
       </aside>
 
@@ -280,7 +282,7 @@ const ClerkDashboard = () => {
       <div className="fixed top-4 left-60 right-4 bg-white shadow-lg z-10 py-3 px-6 rounded-xl">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">
-            Subject Clerk Dashboard
+            {t('Subject Clerk Dashboard')}
           </h1>
           <div className="flex items-center space-x-4">
             <FiBell className="text-gray-700 cursor-pointer" size={18} />
@@ -303,7 +305,7 @@ const ClerkDashboard = () => {
                       onClick={handleLogout}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      Logout
+                      {t('Logout')}
                     </button>
                   </div>
                 )}
@@ -339,7 +341,7 @@ const ClerkDashboard = () => {
                   }}
                   className="flex items-center mb-4 text-gray-600 hover:text-gray-900"
                 >
-                  <FiArrowLeft className="mr-2" /> Back to Dashboard
+                  <FiArrowLeft className="mr-2" /> {t('Back to Dashboard')}
                 </button>
                 <IssueSubmit onSuccess={() => {
                   refreshIssues();
@@ -359,7 +361,7 @@ const ClerkDashboard = () => {
                   onClick={() => setShowSubmissionForm(false)}
                   className="flex items-center mb-4 text-gray-600 hover:text-gray-900"
                 >
-                  <FiArrowLeft className="mr-2" /> Back to Issues
+                  <FiArrowLeft className="mr-2" /> {t('Back to Issues')}
                 </button>
                 <IssueSubmit onSuccess={() => {
                   fetchIssues();
@@ -370,7 +372,7 @@ const ClerkDashboard = () => {
               <>
                 <div className="flex justify-between items-center mb-4">
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-800">Issue Management</h2>
+                    <h2 className="text-xl font-semibold text-gray-800">{t('Issue Management')}</h2>
                   </div>
                   <div className="flex space-x-4">
                     <div>
@@ -379,10 +381,10 @@ const ClerkDashboard = () => {
                         onChange={(e) => setFilterStatus(e.target.value as 'All' | 'Pending' | 'Approved' | 'Rejected')}
                         className="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
-                        <option value="All">All Issues</option>
-                        <option value="Pending">Pending Issues</option>
-                        <option value="Approved">Approved Issues</option>
-                        <option value="Rejected">Rejected Issues</option>
+                        <option value="All">{t('All Issues')}</option>
+                        <option value="Pending">{t('Pending Issues')}</option>
+                        <option value="Approved">{t('Approved Issues')}</option>
+                        <option value="Rejected">{t('Rejected Issues')}</option>
                       </select>
                     </div>
                   </div>

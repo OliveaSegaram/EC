@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../provider/AuthProvider';
 import { AppContext } from '../provider/AppContext';
 import { LoginAssets } from '../assets/icons/login/login';
-import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -17,17 +17,31 @@ const Login = () => {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotNic, setForgotNic] = useState('');
   const [forgotMsg, setForgotMsg] = useState('');
+  const { t, i18n } = useTranslation();
+
+  const handleLanguageChange = (lng: string) => {
+    console.log('Changing language to:', lng);
+    i18n.changeLanguage(lng)
+      .then(() => {
+        console.log('Language changed successfully to:', lng);
+        console.log('Current language:', i18n.language);
+        console.log('Translations:', i18n.getDataByLanguage(lng));
+      })
+      .catch(error => {
+        console.error('Failed to change language:', error);
+      });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nic || !password) {
-      toast.error('NIC and password are required');
+      alert(t('NIC and password are required'));
       return;
     }
     
     // Validate NIC format
     if (!/^(\d{12}|\d{9}[vVxX])$/.test(nic)) {
-      toast.error('Please enter a valid NIC');
+      alert(t('Please enter a valid NIC'));
       return;
     }
     
@@ -45,7 +59,7 @@ const Login = () => {
       setIsLoggedIn(true);
       navigate(`/dashboard/${data.role}`);
     } catch (err: any) {
-      toast.error(err.message);
+      alert(err.message);
     }
   };
 
@@ -74,12 +88,23 @@ const Login = () => {
 
       setForgotMsg('Check your inbox for the reset link.');
     } catch (err: any) {
-      setForgotMsg(err.message || 'Failed to send reset email.');
+      alert(err.message || 'Failed to send reset email.');
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-white px-4 relative">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 relative">
+      <div className="absolute top-4 right-4 z-50">
+        <select 
+          value={i18n.language} 
+          onChange={(e) => handleLanguageChange(e.target.value)}
+          className="p-2 border rounded bg-white shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+        >
+          <option value="en">English</option>
+          <option value="si">සිංහල</option>
+          <option value="ta">தமிழ்</option>
+        </select>
+      </div>
       {/* Login Form */}
       <div className={`flex rounded-xl overflow-hidden shadow-[0px_0px_35px_rgba(138,31,231,0.4)] ${showForgotModal ? 'blur-sm pointer-events-none' : ''}`}>
 
@@ -89,21 +114,21 @@ const Login = () => {
           <p className="text-sm">මැතිවරණ කොමිෂන් සභාව</p>
           <p className="text-sm">தேர்தல் ஆணைக்குழு</p>
           <p className="text-sm mb-2">Election Commission</p>
-          <h2 className="text-xl font-bold">Welcome</h2>
-          <p className="text-center text-sm mt-1">Issue Management System</p>
+          <h2 className="text-xl font-bold">{t('Welcome')}</h2>
+    
         </div>
 
         {/* Right form section */}
         <div className="bg-white p-10 w-96">
-          <h2 className="text-center text-2xl font-bold text-gray-800 mb-2">Login</h2>
-          <p className="text-center text-gray-500 text-sm mb-6">Login to your account</p>
+          <h2 className="text-center text-2xl font-bold text-gray-800 mb-2">{t('Login')}</h2>
+          <p className="text-center text-gray-500 text-sm mb-6">{t('Login to your account')}</p>
 
           <form onSubmit={handleSubmit}>
             <div className="flex items-center mb-4 border border-gray-300 rounded-lg px-3 py-2 focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500 transition-colors">
               <img src={LoginAssets.User} alt="user" className="w-5 h-5 mr-2" />
               <input
                 type="text"
-                placeholder="NIC"
+                placeholder={t('NIC Number')}
                 value={nic}
                 onChange={(e) => setNic(e.target.value)}
                 className="w-full bg-transparent outline-none"
@@ -115,7 +140,7 @@ const Login = () => {
               <img src={LoginAssets.Padlock} alt="lock" className="w-5 h-5 mr-2" />
               <input
                 type="password"
-                placeholder="Password"
+                placeholder={t('Password')}
                 className="flex-1 bg-transparent outline-none"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -127,23 +152,23 @@ const Login = () => {
               className="text-sm text-blue-600 text-right mb-4 cursor-pointer"
               onClick={() => setShowForgotModal(true)}
             >
-              Forgot password?
+              {t('Forgot password?')}
             </p>
 
             <button
               type="submit"
               className="w-full py-2 rounded-lg text-white text-xl bg-gradient-to-b from-purple-600 to-purple-900 shadow-md transition duration-300 hover:shadow-lg"
             >
-              Login
+              {t('Login')}
             </button>
 
             <p className="text-center text-sm mt-4">
-              Don't have an account?{' '}
+              {t("Don't have an account?")}{' '}
               <span
                 className="text-purple-700 font-semibold cursor-pointer"
                 onClick={() => navigate('/register')}
               >
-                Register
+                {t('Register here')}
               </span>
             </p>
           </form>
@@ -154,11 +179,11 @@ const Login = () => {
       {showForgotModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-lg shadow-xl w-80">
-            <h3 className="text-lg font-semibold text-purple-700 mb-2">Reset Password</h3>
+            <h3 className="text-lg font-semibold text-purple-700 mb-2">{t('Reset Password')}</h3>
             <form onSubmit={handleForgotPassword}>
               <input
                 type="text"
-                placeholder="Enter your NIC"
+                placeholder={t('Please enter your NIC number')}
                 value={forgotNic}
                 onChange={(e) => setForgotNic(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A1FE7]"
@@ -167,7 +192,7 @@ const Login = () => {
                 type="submit"
                 className="w-full bg-purple-700 text-white py-2 rounded mb-2"
               >
-                Send Reset Link
+                {t('Send OTP')}
               </button>
               {forgotMsg && <p className="text-sm text-green-600">{forgotMsg}</p>}
             </form>
@@ -178,7 +203,7 @@ const Login = () => {
                 setForgotMsg('');
               }}
             >
-              Back to Login
+              {t('Back')}
             </button>
           </div>
         </div>

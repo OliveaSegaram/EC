@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../provider/AppContext';
 import { toast } from 'react-toastify';
 
@@ -16,11 +16,22 @@ interface Skill {
 
 const Register = () => {
   const { backendUrl } = useAppContext();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [districts, setDistricts] = useState<District[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const handleLanguageChange = (lng: string) => {
+    i18n.changeLanguage(lng)
+      .then(() => {
+        console.log('Language changed successfully to:', lng);
+      })
+      .catch(error => {
+        console.error('Failed to change language:', error);
+      });
+  };
 
   // Fetch districts and skills on component mount
   useEffect(() => {
@@ -238,7 +249,7 @@ const Register = () => {
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading registration form...</p>
+          <p className="mt-4 text-gray-600">{t('Loading registration form...')}</p>
         </div>
       </div>
     );
@@ -249,13 +260,13 @@ const Register = () => {
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center p-6 max-w-md mx-4 bg-red-50 rounded-lg">
           <div className="text-red-500 text-4xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-red-700 mb-2">Error Loading Form</h2>
+          <h2 className="text-xl font-semibold text-red-700 mb-2">{t('Error Loading Form')}</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
           >
-            Try Again
+            {t('Try Again')}
           </button>
         </div>
       </div>
@@ -263,13 +274,24 @@ const Register = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-white px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 relative">
+      <div className="absolute top-4 right-4 z-50">
+        <select 
+          value={i18n.language} 
+          onChange={(e) => handleLanguageChange(e.target.value)}
+          className="p-2 border rounded bg-white shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+        >
+          <option value="en">English</option>
+          <option value="si">සිංහල</option>
+          <option value="ta">தமிழ்</option>
+        </select>
+      </div>
       <div className="flex drop-shadow-[0_10px_15px_rgba(139,92,246,0.4)] rounded-xl overflow-hidden">
 
         {/* Left form section */}
         <div className="bg-white p-10 w-[28rem]">
-          <h2 className="text-center text-2xl font-bold text-gray-800 mb-2">Register</h2>
-          <p className="text-center text-gray-500 text-sm mb-6">Create a new account</p>
+          <h2 className="text-center text-2xl font-bold text-gray-800 mb-2">{t('Register')}</h2>
+          <p className="text-center text-gray-500 text-sm mb-6">{t('Create a new account')}</p>
 
           <form onSubmit={handleSubmit}>
             <input
@@ -278,13 +300,13 @@ const Register = () => {
               value={formData.nic}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 transition-colors"
-              placeholder="NIC Number"
+              placeholder={t('NIC Number')}
               required
             />
 
             <input
               name="username"
-              placeholder="Username"
+              placeholder={t('Username')}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 transition-colors"
               required
@@ -293,7 +315,7 @@ const Register = () => {
             <input
               name="email"
               type="email"
-              placeholder="Email"
+              placeholder={t('Email')}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 transition-colors"
               required
@@ -302,7 +324,7 @@ const Register = () => {
             <input
               name="password"
               type="password"
-              placeholder="Password"
+              placeholder={t('Password')}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 transition-colors"
               required
@@ -311,13 +333,13 @@ const Register = () => {
             <input
               name="confirmPassword"
               type="password"
-              placeholder="Confirm Password"
+              placeholder={t('Confirm Password')}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 transition-colors"
               required
             />
             <p className="text-sm text-gray-600 mb-1 ml-1">
-              Select your role as per your position*,
+              {t('Select your role as per your position*')},
             </p>
 
             <select
@@ -327,7 +349,7 @@ const Register = () => {
               className="w-full border border-gray-300 focus:border-gray-300 focus:ring-0 px-4 py-2 rounded-lg mb-3 transition-colors"
               required
             >
-              <option value="">-- Select Role --</option>
+              <option value="">{t('-- Select Role --')}</option>
               <option value="subject_clerk">Subject Clerk</option>
               <option value="super_user">Super User</option>
               <option value="technical_officer">Technical Officer</option>
@@ -343,7 +365,7 @@ const Register = () => {
               required
               disabled={isLoading || ['super_admin', 'super_user', 'technical_officer'].includes(formData.role)}
             >
-              <option value="">-- Select District --</option>
+              <option value="">{t('-- Select District --')}</option>
               {districts.map(district => (
                 <option key={district.id} value={district.id}>
                   {district.name}
@@ -354,14 +376,14 @@ const Register = () => {
             {/* District info message for head office roles */}
             {['super_admin', 'super_user', 'technical_officer'].includes(formData.role) && (
               <p className="text-sm text-gray-500 mb-2 ml-1">
-                District is automatically set to Colombo Head Office for this role
+                {t('District is automatically set to Colombo Head Office for this role')}
               </p>
             )}
 
             {/* Skills checkboxes - only shown for Technical Officer role */}
             {formData.role === 'technical_officer' && (
               <div className="mb-3">
-                <p className="text-sm text-gray-600 mb-2 ml-1">Select your skills *</p>
+                <p className="text-sm text-gray-600 mb-2 ml-1">{t('Select your skills')} *</p>
                 <div className="grid grid-cols-2 gap-2">
                   {skills.map(skill => (
                     <label key={skill.id} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer">
@@ -379,14 +401,14 @@ const Register = () => {
                   ))}
                 </div>
                 {formData.role === 'technical_officer' && !formData.skillId && (
-                  <p className="mt-1 text-sm text-red-500">Please select at least one skill</p>
+                  <p className="mt-1 text-sm text-red-500">{t('Please select at least one skill')}</p>
                 )}
               </div>
             )}
 
             <textarea
               name="description"
-              placeholder="Enter a short description or reason for registering"
+              placeholder={t('Enter a short description or reason for registering')}
               value={formData.description}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 resize-none transition-colors"
@@ -395,7 +417,7 @@ const Register = () => {
 
             <div className="relative mb-3">
               <label className="block w-full py-2 px-4 rounded-lg bg-purple-100 text-purple-800 font-medium text-center cursor-pointer hover:bg-purple-200 transition-colors">
-                Choose File
+                {t('Choose File')}
                 <input
                   type="file"
                   name="attachment"
@@ -415,13 +437,13 @@ const Register = () => {
               type="submit"
               className="w-full py-2 rounded-lg text-white text-xl bg-gradient-to-b from-purple-600 to-purple-900 shadow-md transition duration-300 hover:shadow-lg"
             >
-              Register
+              {t('Register')}
             </button>
 
             <p className="text-center text-sm mt-4">
-              Already have an account?{' '}
+              {t("Already have an account?")}{' '}
               <span className="text-purple-700 font-semibold cursor-pointer" onClick={() => navigate('/login')}>
-                Login
+                {t('Login')}
               </span>
             </p>
           </form>
