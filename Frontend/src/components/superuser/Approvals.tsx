@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { FiSearch, FiEye, FiCheckCircle } from 'react-icons/fi'; 
+import { FiSearch, FiEye, FiCheckCircle, FiRefreshCw, FiMessageSquare } from 'react-icons/fi'; 
 import axios from 'axios';
 import { AppContext } from '../../provider/AppContext';
 
@@ -428,34 +428,75 @@ const Approvals = () => {
                 </div>
                 
                 {/* Technical Officer Comments */}
-                {(selectedIssue.status === 'In Progress' || selectedIssue.status === 'Resolved') && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <h4 className="text-sm font-medium text-gray-500 mb-2">Technical Officer's Update</h4>
-                    <div className="bg-blue-50 p-3 rounded-md">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">
-                            Status: {selectedIssue.status}
-                          </p>
-                          {selectedIssue.comment && (
-                            <div className="mt-2">
-                              <p className="text-sm font-medium text-gray-700">Comment:</p>
-                              <p className="text-sm text-gray-600 whitespace-pre-line">
-                                {selectedIssue.comment}
-                              </p>
-                            </div>
-                          )}
+                {(selectedIssue.status === 'In Progress' || selectedIssue.status === 'Resolved' || selectedIssue.comment) && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-500 mb-3">Activity Log</h4>
+                    <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 max-h-96 overflow-y-auto">
+                      {selectedIssue.comment ? (
+                        <div className="space-y-4">
+                          {selectedIssue.comment.split('\n\n').filter(block => block.trim() !== '').map((commentBlock, blockIndex) => {
+                            // Extract timestamp from the end of the comment (format: at 2025-06-22T06:04:50.143Z)
+                            const timestampMatch = commentBlock.match(/at (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.?\d*Z)$/);
+                            let timestamp = null;
+                            let commentText = commentBlock;
+                            
+                            if (timestampMatch) {
+                              timestamp = new Date(timestampMatch[1] || timestampMatch[0].substring(3)); // Remove 'at ' prefix
+                              commentText = commentBlock.substring(0, timestampMatch.index).trim();
+                            }
+                            
+                            // Check if this is a status update
+                            const isStatusUpdate = commentText.toLowerCase().includes('status updated to');
+                            const statusMatch = commentText.match(/status updated to ([^\s]+)/i);
+                            const status = statusMatch ? statusMatch[1] : null;
+                            
+                            return (
+                              <div 
+                                key={blockIndex} 
+                                className={`flex gap-3 ${isStatusUpdate ? 'items-center' : 'items-start'}`}
+                              >
+                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                                  isStatusUpdate ? 'bg-blue-500' : 'bg-purple-500'
+                                }`}>
+                                  {isStatusUpdate ? (
+                                    <FiRefreshCw size={16} />
+                                  ) : (
+                                    <FiMessageSquare size={16} />
+                                  )}
+                                </div>
+                                
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-baseline justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-gray-900">
+                                        {isStatusUpdate ? 'Status Update' : 'Comment'}
+                                      </span>
+                                      {status && (
+                                        <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
+                                          {status}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {timestamp && (
+                                      <span className="text-xs text-gray-500">
+                                        {timestamp.toLocaleString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-1 text-sm text-gray-700 whitespace-pre-line">
+                                    {isStatusUpdate ? commentText.replace(/^Status updated to [^:]+:?\s*/i, '') : commentText}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                          {selectedIssue.assignedTo?.username || 'Technical Officer'}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-xs text-gray-500">
-                        Last updated: {new Date(selectedIssue.updatedAt).toLocaleString()}
-                      </p>
+                      ) : (
+                        <p className="text-sm text-gray-500">No activity log available</p>
+                      )}
                     </div>
                   </div>
-                )}
+                )} 
               
               {/* Approval/Rejection Comments */}
               {(selectedIssue.status === 'Rejected by DC' || 
