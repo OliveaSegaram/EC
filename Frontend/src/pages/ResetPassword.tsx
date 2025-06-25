@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppContext } from '../provider/AppContext';
+import { toast } from 'react-toastify';
 
 const ResetPassword: React.FC = () => {
   const { token } = useParams();
@@ -9,19 +10,25 @@ const ResetPassword: React.FC = () => {
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { backendUrl } = useContext(AppContext);
-  const [success, setSuccess] = useState(false);
   const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (password !== confirm) {
-      setError(t('Passwords do not match'));
+    
+    if (!token) {
+      toast.error('Invalid reset token');
       return;
     }
 
+    if (password !== confirm) {
+      toast.error(t('Passwords do not match'));
+      return;
+    }
+
+    setIsSubmitting(true);
+    
     try {
       const res = await fetch(`${backendUrl}/auth/reset-password/${token}`, {
         method: 'POST',
@@ -30,12 +37,14 @@ const ResetPassword: React.FC = () => {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setSuccess(true);
-      setError('');
+      if (!res.ok) throw new Error(data.message || 'Failed to reset password');
+      
+      toast.success('Password has been reset successfully. Redirecting to login...');
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+      toast.error(err.message || 'Failed to reset password. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -44,8 +53,11 @@ const ResetPassword: React.FC = () => {
       <div className="bg-white p-8 shadow-lg rounded-lg w-full max-w-md">
         <h2 className="text-2xl font-bold mb-6 text-center text-purple-800">{t('Reset Password')}</h2>
 
-        {success ? (
-          <p className="text-green-600 text-center">{t('Password updated! Redirecting to login...')}</p>
+        {isSubmitting ? (
+          <div className="text-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Updating password...</p>
+          </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <input
@@ -66,11 +78,12 @@ const ResetPassword: React.FC = () => {
               required
             />
 
-            {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
+
 
             <button
               type="submit"
-              className="w-full py-2 bg-purple-700 text-white rounded hover:bg-purple-800"
+              className={`w-full py-2 bg-purple-700 text-white rounded hover:bg-purple-800 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+              disabled={isSubmitting}
             >
               {t('Update Password')}
             </button>

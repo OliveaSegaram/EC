@@ -1,14 +1,13 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { useTranslation } from 'react-i18next';
 import { AppContext } from '../provider/AppContext';
 import { toast } from 'react-toastify';
 
 const ForgotPassword: React.FC = () => {
   const [nic, setNic] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
+  // Removed showSuccess state as we'll use toast for success messages
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
   const { backendUrl } = useContext(AppContext);
   const { t } = useTranslation();
 
@@ -24,7 +23,8 @@ const ForgotPassword: React.FC = () => {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to send email');
-      setShowSuccess(true);
+      toast.success('Password reset link has been sent to your email.');
+      setNic(''); // Clear the input field
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -34,8 +34,7 @@ const ForgotPassword: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white relative">
-      {/* Background blur if modal is open */}
-      <div className={`${showSuccess ? 'blur-sm pointer-events-none' : ''} transition-all w-full max-w-md bg-white p-8 rounded shadow z-0`}>
+      <div className="w-full max-w-md bg-white p-8 rounded shadow z-0">
         <h2 className="text-2xl font-bold mb-4 text-center text-purple-800">{t('Forgot Password')}</h2>
         <p className="text-sm text-gray-600 mb-4 text-center">{t('Enter your NIC to receive a password reset link')}</p>
         <form onSubmit={handleSubmit}>
@@ -57,24 +56,7 @@ const ForgotPassword: React.FC = () => {
         </form>
       </div>
 
-      {/* Success Modal */}
-      {showSuccess && (
-        <div className="absolute z-10 inset-0 flex items-center justify-center">
-          <div className="bg-white shadow-lg rounded-lg p-6 w-80 text-center">
-            <h3 className="text-xl font-semibold mb-2 text-purple-800">{t('Check Your Email!')}</h3>
-            <p className="text-sm mb-4 text-gray-600">{t("If an account exists with this NIC, we've sent a password reset link to the registered email address.")}</p>
-            <button
-              onClick={() => {
-                setShowSuccess(false);
-                navigate('/login');
-              }}
-              className="bg-purple-700 text-white px-4 py-2 rounded hover:bg-purple-800"
-            >
-              {t('Back to Login')}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Success message is now handled by toast */}
     </div>
   );
 };

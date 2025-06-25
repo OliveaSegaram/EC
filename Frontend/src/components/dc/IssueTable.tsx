@@ -1,5 +1,7 @@
 import React from 'react';
 import { FiEye } from 'react-icons/fi';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 interface Issue {
@@ -32,8 +34,14 @@ const IssueTable: React.FC<IssueTableProps> = ({
   setSelectedIssue,
   setShowModal,
 }) => {
+  // Toast notifications are handled by the global ToastContainer in App.tsx
+
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow p-4">
+    <div className="overflow-x-auto bg-white rounded-lg shadow p-4 relative">
+      {/* Toast Container */}
+      <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50">
+        <div id="toast-container"></div>
+      </div>
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
@@ -73,8 +81,9 @@ const IssueTable: React.FC<IssueTableProps> = ({
                     onClick={() => {
                       setSelectedIssue(issue);
                       setShowModal(true);
+                      toast.info('Loading issue details...');
                     }}
-                    className="text-blue-600 hover:text-blue-900"
+                    className="text-blue-600 hover:text-blue-900 transition-colors duration-200 p-1 rounded"
                     title="View Details"
                   >
                     <FiEye size={18} />

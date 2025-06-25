@@ -2,6 +2,7 @@ const { User, Role, District, Skill } = require('../models');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
+const path = require('path');
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
@@ -27,8 +28,12 @@ const register = async (req, res) => {
     }),
     skillId: Joi.when('role', {
       is: 'technical_officer',
-      then: Joi.number().integer().required(),
-      otherwise: Joi.number().integer().optional()
+      then: Joi.alternatives().try(
+        Joi.number().integer(),
+        Joi.string(),
+        Joi.array().items(Joi.number().integer())
+      ).required(),
+      otherwise: Joi.any().optional()
     }),
     description: Joi.string().allow('').optional()
   });
@@ -62,6 +67,11 @@ const register = async (req, res) => {
 
     // Check if user with same email or nic already exists
     const existingUser = await User.findOne({ 
+      attributes: [
+        'id', 'nic', 'username', 'email', 'password', 'description', 
+        'districtId', 'isVerified', 'attachment', 'resetToken', 
+        'resetTokenExpiry', 'createdAt', 'updatedAt', 'roleId', 'skillIds'
+      ],
       where: { 
         [Op.or]: [
           { email },
@@ -79,20 +89,37 @@ const register = async (req, res) => {
       }
     }
 
-    // For technical officers, verify skill exists
-    let skill = null;
+    // For technical officers, validate and process skill IDs
+    let skillIdsValue = [];
     if (role === 'technical_officer') {
-      skill = await Skill.findByPk(skillId);
-      if (!skill) {
-        return res.status(400).json({ message: "Invalid skill" });
+      // Convert skillId to an array if it's a string (comma-separated) or a single number
+      if (typeof skillId === 'string') {
+        skillIdsValue = skillId.split(',').map(id => id.trim());
+      } else if (Array.isArray(skillId)) {
+        skillIdsValue = skillId;
+      } else if (skillId) {
+        skillIdsValue = [skillId];
+      }
+
+      if (skillIdsValue.length === 0) {
+        return res.status(400).json({ message: "At least one skill is required for technical officers" });
+      }
+
+      // Verify each skill exists
+      for (const id of skillIdsValue) {
+        const skillIdNum = parseInt(id, 10);
+        if (isNaN(skillIdNum)) {
+          return res.status(400).json({ message: `Invalid skill ID: ${id}` });
+        }
+        
+        const skill = await Skill.findByPk(skillIdNum);
+        if (!skill) {
+          return res.status(400).json({ message: `Skill with ID ${id} not found` });
+        }
       }
     } else {
-      // For non-technical roles, set a default skill ID (e.g., 'Other')
-      skill = await Skill.findOne({ where: { name: 'Other' } });
-      if (!skill) {
-        skill = await Skill.create({ name: 'Other' });
-      }
-      skillId = skill.id;
+      // For non-technical roles, set a default skill ID (1 for 'Other')
+      skillIdsValue = ['1'];
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -101,6 +128,7 @@ const register = async (req, res) => {
 
     const attachmentUrl = req.file ? req.file.path : null;
 
+    // Create the user with skillIds
     const user = await User.create({
       nic,
       username,
@@ -111,8 +139,22 @@ const register = async (req, res) => {
       attachment: attachmentUrl,
       description,
       districtId,
-      skillId
+      skillIds: skillIdsValue.join(',')
+    }, {
+      fields: [
+        'nic', 'username', 'email', 'password', 'roleId', 
+        'isVerified', 'attachment', 'description', 'districtId', 'skillIds'
+      ]
     });
+
+    // Get skill names for email
+    const skillNames = [];
+    for (const id of skillIdsValue) {
+      const skill = await Skill.findByPk(id);
+      if (skill) {
+        skillNames.push(skill.name);
+      }
+    }
 
     const linkAccept = `${process.env.BASE_URL}/api/auth/verify/${user.id}?action=accept`;
     const linkDecline = `${process.env.BASE_URL}/api/auth/verify/${user.id}?action=decline`;
@@ -127,9 +169,9 @@ const register = async (req, res) => {
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Role:</strong> ${role}</p>
         <p><strong>District:</strong> ${district.name}</p>
-        <p><strong>Skill:</strong> ${skill.name}</p>
+        <p><strong>Skills:</strong> ${skillNames.join(', ')}</p>
         <p><strong>Description:</strong> ${description || 'N/A'}</p>
-        <p><strong>Attachment:</strong> <a href="${process.env.BASE_URL}/${attachmentUrl}">View Attachment</a></p>
+        <p><strong>Attachment:</strong> ${attachmentUrl ? `<a href="${process.env.BASE_URL}/api/uploads/${path.basename(attachmentUrl)}">View Attachment</a>` : 'No attachment'}</p>
 
         <p><a href="${linkAccept}">Accept</a> | <a href="${linkDecline}"> Decline</a></p>
       `

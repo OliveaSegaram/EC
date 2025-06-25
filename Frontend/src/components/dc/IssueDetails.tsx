@@ -2,17 +2,33 @@ import React, { useContext } from 'react';
 import { AppContext } from '../../provider/AppContext';
 import { 
   FiX, 
+  FiCheckCircle, 
+  FiXCircle, 
+  FiRefreshCw, 
+  FiCheck, 
+  FiMessageSquare, 
   FiCalendar, 
   FiAlertCircle, 
   FiMapPin, 
   FiTool, 
   FiClipboard, 
   FiFileText, 
-  FiShield,
-  FiCheckCircle,
-  FiXCircle 
+  FiShield
 } from 'react-icons/fi';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
+import { toast } from 'react-toastify';
+
+interface Comment {
+  id: number;
+  content: string;
+  createdAt: string;
+  createdBy: {
+    id: number;
+    username: string;
+    role: string;
+  };
+  type: 'COMMENT' | 'REJECTION' | 'APPROVAL';
+}
 
 interface Issue {
   id: number;
@@ -23,9 +39,11 @@ interface Issue {
   location: string;
   status: string;
   submittedAt: string;
+  updatedAt?: string;
   attachment: string | null;
   underWarranty: boolean;
   comment?: string;
+  comments?: Comment[];
 }
 
 interface IssueDetailsProps {
@@ -54,6 +72,12 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
   
   const { backendUrl } = useContext(AppContext);
 
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedIssue(null);
+    toast.dismiss(); // Clear any active toasts when closing modal
+  };
+
   // Function to handle attachment view
   const handleViewAttachment = () => {
     if (selectedIssue.attachment) {
@@ -61,17 +85,75 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
     }
   };
 
-  // Format date to be more readable
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'short', 
+  // Format date for display
+  const formatDate = (dateString: string, options?: Intl.DateTimeFormatOptions): string => {
+    if (!dateString) return 'N/A';
+    const defaultOptions: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+    return new Date(dateString).toLocaleDateString('en-US', options || defaultOptions);
   };
+
+  // Get all unique comments for the issue
+  const getAllUserComments = () => {
+    const commentMap = new Map<number, Comment>();
+    const seenContent = new Set<string>();
+
+    // Add the main comment if it exists
+    if (selectedIssue.comment?.trim()) {
+      const mainComment = {
+        id: -1,
+        content: selectedIssue.comment,
+        createdAt: selectedIssue.submittedAt,
+        createdBy: { id: -1, username: 'System', role: 'System' },
+        type: 'COMMENT' as const
+      };
+      commentMap.set(-1, mainComment);
+      seenContent.add(selectedIssue.comment.trim());
+    }
+
+    // Process all comments from the comments array
+    if (selectedIssue.comments?.length) {
+      selectedIssue.comments.forEach(comment => {
+        // Skip if we've already seen this exact content
+        const trimmedContent = comment.content.trim();
+        if (seenContent.has(trimmedContent)) return;
+        
+        // Add to seen content and map
+        seenContent.add(trimmedContent);
+        commentMap.set(comment.id, comment);
+      });
+    }
+
+    // Handle rejection case - ensure we have a rejection comment if status is rejected
+    if (selectedIssue.status === ISSUE_STATUS.DC_REJECTED && 
+        !Array.from(commentMap.values()).some(c => c.type === 'REJECTION') &&
+        selectedIssue.comment?.trim()) {
+      const rejectionComment = {
+        id: -2,
+        content: selectedIssue.comment,
+        createdAt: selectedIssue.updatedAt || selectedIssue.submittedAt,
+        createdBy: { id: -1, username: 'User', role: 'User' },
+        type: 'REJECTION' as const
+      };
+      
+      // Only add if we don't already have this exact content
+      if (!seenContent.has(selectedIssue.comment.trim())) {
+        commentMap.set(-2, rejectionComment);
+      }
+    }
+
+    // Convert map values to array and sort by creation date
+    return Array.from(commentMap.values()).sort((a, b) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  };
+  
+  const allComments = getAllUserComments();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-start justify-center p-4">
@@ -92,10 +174,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
               </div>
             </div>
             <button
-              onClick={() => {
-                setShowModal(false);
-                setSelectedIssue(null);
-              }}
+              onClick={handleCloseModal}
               className="text-white hover:text-purple-200 transition-colors"
               aria-label="Close"
             >
@@ -157,23 +236,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                   <p className="whitespace-pre-line">{selectedIssue.description}</p>
                 </div>
               </div>
-
-              {/* Rejection Reason (if exists and rejected by DC) */}
-              {selectedIssue.status === ISSUE_STATUS.DC_REJECTED && selectedIssue.comment && (
-                <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <FiAlertCircle className="h-5 w-5 text-red-400" aria-hidden="true" />
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800">Rejection Reason</h3>
-                      <div className="mt-2 text-sm text-red-700">
-                        <p>{selectedIssue.comment}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Right Column - Attachment */}
@@ -208,6 +270,107 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
           </div>
         </div>
         
+        {/* Activity Log Section */}
+        <div className="border-t border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-medium text-gray-700">Activity Log</h4>
+            <span className="text-xs text-gray-500">
+              {selectedIssue.updatedAt && `Last updated: ${formatDate(selectedIssue.updatedAt)}`}
+            </span>
+          </div>
+          
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 max-h-96 overflow-y-auto">
+            {allComments.length > 0 ? (
+              <div className="space-y-4">
+                {allComments.map((comment: Comment) => {
+                  // Extract timestamp from the end of the comment (format: at 2025-06-22T06:04:50.143Z)
+                  const timestampMatch = comment.content.match(/at (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.?\d*Z)$/);
+                  let commentText = comment.content;
+                  
+                  if (timestampMatch) {
+                    // Remove the timestamp from the comment text
+                    commentText = comment.content.substring(0, timestampMatch.index).trim();
+                  }
+                  
+                  // Check if this is a status update
+                  const isStatusUpdate = commentText.toLowerCase().includes('status updated to');
+                  const statusMatch = commentText.match(/status updated to ([^\s]+)/i);
+                  const status = statusMatch ? statusMatch[1] : null;
+                  
+                  // Determine icon and background based on comment type
+                  let icon, bgColor;
+                  if (isStatusUpdate) {
+                    icon = <FiRefreshCw size={16} />;
+                    bgColor = 'bg-blue-500';
+                  } else if (comment.type === 'REJECTION') {
+                    icon = <FiX size={16} />;
+                    bgColor = 'bg-red-500';
+                  } else if (comment.type === 'APPROVAL') {
+                    icon = <FiCheck size={16} />;
+                    bgColor = 'bg-green-500';
+                  } else {
+                    icon = <FiMessageSquare size={16} />;
+                    bgColor = 'bg-purple-500';
+                  }
+                  
+                  return (
+                    <div 
+                      key={comment.id} 
+                      className={`flex gap-3 ${isStatusUpdate ? 'items-center' : 'items-start'}`}
+                    >
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${bgColor}`}>
+                        {icon}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {isStatusUpdate ? 'Status Update' : 
+                               comment.type === 'REJECTION' ? 'Rejection' :
+                               comment.type === 'APPROVAL' ? 'Approval' :
+                               comment.createdBy?.username || 'User'}
+                            </span>
+                            
+                            {status && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {status}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="relative group">
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap break-words pr-2">
+                            {commentText}
+                            <span className="absolute bottom-0 right-0 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 px-1 rounded">
+                              {formatDate(comment.createdAt || selectedIssue.submittedAt, {
+                                month: 'numeric',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: true
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FiMessageSquare className="mx-auto h-10 w-10 text-gray-300" />
+                <p className="mt-2 text-sm text-gray-500">No activity yet</p>
+                <p className="text-xs text-gray-400 mt-1">Updates will appear here</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Action Buttons - Only shown in Dashboard view */}
         {isDashboardView && selectedIssue.status === 'Pending' && (
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 rounded-b-xl">
@@ -216,7 +379,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                 onClick={() => {
                   if (openRejectCommentModal) {
                     openRejectCommentModal(selectedIssue);
-                    setShowModal(false);
+                    handleCloseModal();
+                  } else {
+                    handleCloseModal();
                   }
                 }}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -228,8 +393,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                 onClick={() => {
                   if (handleApproveIssue) {
                     handleApproveIssue(selectedIssue.id);
-                    setShowModal(false);
+                    toast.success('Issue approved successfully!');
                   }
+                  handleCloseModal();
                 }}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >

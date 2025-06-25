@@ -11,11 +11,11 @@ exports.getTechnicalOfficerAssignedIssues = async (req, res) => {
   try {
     const userId = req.user.userId;
     
-    // Get all issues assigned to this technical officer
+    // Get all issues assigned to this technical officer, including resolved ones
     const issues = await Issue.findAll({
       where: { 
         assignedTo: userId,
-        status: [ASSIGNED, IN_PROGRESS, REOPENED]
+        status: [ASSIGNED, IN_PROGRESS, REOPENED, RESOLVED, 'Resolved']
       },
       order: [['updatedAt', 'DESC']],
       include: [

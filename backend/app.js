@@ -31,6 +31,7 @@ app.use('/api/issues', require('./routes/issueRoutes'));
 app.use('/api/assignments', require('./routes/issueAssignmentRoutes'));
 app.use('/api/reviews', require('./routes/issueReviewRoutes'));
 app.use('/api', require('./routes/dataRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

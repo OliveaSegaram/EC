@@ -153,7 +153,7 @@ const RootDashboard = () => {
       <div className="fixed top-4 left-60 right-4 bg-white shadow-lg z-10 py-3 px-6 rounded-xl">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-purple-900">
-            Root Dashboard
+            Super Admin  Dashboard
           </h1>
           <div className="flex items-center space-x-4">
             <FiBell className="text-gray-600" />

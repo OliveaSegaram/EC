@@ -33,12 +33,21 @@ module.exports = (sequelize, DataTypes) => {
           key: 'id'
         }
       },
-      skillId: {
-        type: DataTypes.INTEGER,
+      skillIds: {
+        type: DataTypes.STRING,
         allowNull: true,
-        references: {
-          model: 'Skills',
-          key: 'id'
+        get() {
+          const rawValue = this.getDataValue('skillIds');
+          return rawValue ? rawValue.split(',').map(id => parseInt(id.trim(), 10)) : [];
+        },
+        set(value) {
+          if (Array.isArray(value)) {
+            this.setDataValue('skillIds', value.join(','));
+          } else if (value) {
+            this.setDataValue('skillIds', value);
+          } else {
+            this.setDataValue('skillIds', null);
+          }
         }
       },
       isVerified: {
@@ -66,12 +75,27 @@ module.exports = (sequelize, DataTypes) => {
       ]
     });
   
-    User.associate = (models) => {
+    User.associate = function(models) {
     User.belongsTo(models.Role, {
       foreignKey: 'roleId',
       as: 'role'
     });
+    
+    // Explicitly define the relationship to prevent any automatic inclusion of skillId
+    User.belongsToMany(models.Skill, {
+      through: 'UserSkills',
+      foreignKey: 'userId',
+      otherKey: 'skillId',
+      as: 'skills'
+    });
   };
+  
+  // Add a default scope to exclude any problematic fields
+  User.addScope('defaultScope', {
+    attributes: {
+      exclude: ['skillId'] // Explicitly exclude skillId if it's still being referenced
+    }
+  }, { override: true });
 
   return User;
 };

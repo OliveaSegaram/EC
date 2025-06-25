@@ -126,10 +126,23 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setIssue((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    setIssue((prev) => {
+      // If complaintType is changing, handle warranty field
+      if (name === 'complaintType') {
+        return {
+          ...prev,
+          [name]: value,
+          // Set underWarranty to false if not Computer Repair
+          underWarranty: value === 'Computer Repair' ? prev.underWarranty : false
+        };
+      }
+      
+      return {
+        ...prev,
+        [name]: value,
+      };
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,7 +157,14 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
     e.preventDefault();
     
     if (locationError) {
-      toast.error('Cannot submit issue: ' + locationError);
+      toast.error(`Cannot submit issue: ${locationError}`, {
+        position: 'top-center',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
     
@@ -155,24 +175,58 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
       return;
     }
     
+    const validateForm = () => {
+      if (!issue.deviceId.trim()) {
+        toast.error('Please enter a device ID');
+        return false;
+      }
+      if (!issue.complaintType) {
+        toast.error('Please select a complaint type');
+        return false;
+      }
+      if (!issue.description.trim()) {
+        toast.error('Please enter a description');
+        return false;
+      }
+      if (!issue.priorityLevel) {
+        toast.error('Please select a priority level');
+        return false;
+      }
+      if (isHeadOffice && !issue.branch) {
+        toast.error('Please select a branch');
+        return false;
+      }
+      if (issue.underWarranty === undefined || issue.underWarranty === null) {
+        toast.error('Please select warranty status');
+        return false;
+      }
+      return true;
+    };
+
+    if (!validateForm()) {
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        toast.error('You are not logged in. Please log in to submit an issue.');
+        const errorMsg = 'You are not logged in. Please log in to submit an issue.';
+        toast.error(errorMsg);
         throw new Error('No authentication token found');
       }
       
       const form = new FormData();
       
-      // Always include all fields in the form data
+      // Always include these fields
       const formData: Record<string, any> = {
         deviceId: issue.deviceId,
         complaintType: issue.complaintType,
         description: issue.description,
         priorityLevel: issue.priorityLevel,
-        underWarranty: issue.underWarranty,
+        // Only include underWarranty if it's a Computer Repair issue
+        underWarranty: issue.complaintType === 'Computer Repair' ? issue.underWarranty : false,
       };
 
       // Handle location based on user type
@@ -215,7 +269,8 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
         updateForm.append('complaintType', issue.complaintType);
         updateForm.append('description', issue.description);
         updateForm.append('priorityLevel', issue.priorityLevel);
-        updateForm.append('underWarranty', issue.underWarranty.toString());
+        // Only include underWarranty if it's a Computer Repair issue
+        updateForm.append('underWarranty', issue.complaintType === 'Computer Repair' ? issue.underWarranty.toString() : 'false');
         
         // Handle location based on user type
         if (isHeadOffice && issue.branch) {
@@ -239,7 +294,7 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
           complaintType: issue.complaintType,
           description: issue.description.substring(0, 30) + '...',
           priorityLevel: issue.priorityLevel,
-          underWarranty: issue.underWarranty,
+          underWarranty: issue.complaintType === 'Computer Repair' ? issue.underWarranty : false,
           hasAttachment: !!issue.attachment
         });
         
@@ -253,7 +308,7 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
             },
           }
         );
-        toast.success('Issue updated successfully');
+        toast.success('Issue updated successfully!');
       } else {
         // For new issues, send all data
         response = await axios.post(
@@ -266,7 +321,7 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
             },
           }
         );
-        toast.success('Issue submitted successfully');
+        toast.success('Issue submitted successfully!');
       }
       
       console.log('Issue submission/update response:', response.data);
@@ -429,20 +484,38 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({ onSuccess, issueToEdit, onCan
           />
         </div>
 
-        {/* Under Warranty Checkbox */}
-        <div className="mb-4 flex items-center">
-          <input
-            type="checkbox"
-            id="underWarranty"
-            name="underWarranty"
-            checked={issue.underWarranty}
-            onChange={(e) => setIssue({ ...issue, underWarranty: e.target.checked })}
-            className="w-4 h-4"
-          />
-          <label htmlFor="underWarranty" className="text-gray-500 ml-2">
-            Under Warranty
-          </label>
-        </div>
+        {/* Under Warranty Radio Buttons - Only show for Computer Repair */}
+        {issue.complaintType === 'Computer Repair' && (
+          <div className="mb-4">
+            <label className="block text-gray-700 font-semibold mb-2">
+              Under Warranty <span className="text-red-500">*</span>
+            </label>
+            <div className="flex items-center space-x-6">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="underWarranty"
+                  checked={issue.underWarranty === true}
+                  onChange={() => setIssue({ ...issue, underWarranty: true })}
+                  className="form-radio h-4 w-4 text-purple-600"
+                  required
+                />
+                <span className="ml-2 text-gray-700">Yes</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="underWarranty"
+                  checked={issue.underWarranty === false}
+                  onChange={() => setIssue({ ...issue, underWarranty: false })}
+                  className="form-radio h-4 w-4 text-purple-600"
+                  required
+                />
+                <span className="ml-2 text-gray-700">No</span>
+              </label>
+            </div>
+          </div>
+        )}
 
         {/* Submit and Cancel Buttons */}
         <div className="flex justify-end space-x-3 mt-6">

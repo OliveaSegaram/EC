@@ -14,5 +14,7 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false
   });
 
+  // No associations needed as we're using skillIds column directly
+
   return Skill;
 };

@@ -39,7 +39,7 @@ interface Issue {
   approvals: Approval[];
 }
 
-type StatusFilter = 'all' | 'pending' | 'approved' | 'assigned';
+type StatusFilter = 'all' | 'pending' | 'assigned';
 
 const Approvals = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'colombo'>('all');
@@ -53,7 +53,6 @@ const Approvals = () => {
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
-    approved: 0,
     assigned: 0
   });
 
@@ -102,13 +101,11 @@ const Approvals = () => {
         setStats({
           total: issuesData.length,
           pending: issuesData.filter((i: Issue) => i.status === 'Pending').length,
-          approved: issuesData.filter((i: Issue) => 
-            i.status === 'Issue approved by Super Admin' || 
-            i.status === 'DC Approved'
-          ).length,
           assigned: issuesData.filter((i: Issue) => 
             i.status === 'Assigned to Technician' || 
-            i.status === 'In Progress'
+            i.status === 'In Progress' ||
+            i.status === 'Issue approved by Super Admin' || 
+            i.status === 'DC Approved'
           ).length
         });
       }
@@ -142,15 +139,12 @@ const Approvals = () => {
     // Apply status filter
     if (statusFilter === 'pending') {
       return matchesSearch && issue.status === 'Pending';
-    } else if (statusFilter === 'approved') {
-      return matchesSearch && (
-        issue.status === 'Issue approved by Super Admin' || 
-        issue.status === 'DC Approved'
-      );
     } else if (statusFilter === 'assigned') {
       return matchesSearch && (
         issue.status === 'Assigned to Technician' || 
-        issue.status === 'In Progress'
+        issue.status === 'In Progress' ||
+        issue.status === 'Issue approved by Super Admin' || 
+        issue.status === 'DC Approved'
       );
     }
     return matchesSearch;
@@ -240,14 +234,7 @@ const Approvals = () => {
           >
             Pending ({stats.pending})
           </button>
-          <button
-            onClick={() => setStatusFilter('approved')}
-            className={`px-3 py-1 rounded-full text-sm font-medium ${statusFilter === 'approved' 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-          >
-            Approved ({stats.approved})
-          </button>
+
           <button
             onClick={() => setStatusFilter('assigned')}
             className={`px-3 py-1 rounded-full text-sm font-medium ${statusFilter === 'assigned' 

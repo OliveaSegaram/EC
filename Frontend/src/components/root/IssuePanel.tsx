@@ -81,11 +81,24 @@ const IssuePanel: React.FC = () => {
       );
 
       if (response.data.success) {
-        await fetchIssues();
-        toast.success('Issue approved successfully');
-        setShowApproveModal(false);
-        setShowModal(false); // Close the issue details modal
+        // Clear the comment
         setApproveComment('');
+        
+        // Close the approval modal
+        setShowApproveModal(false);
+        
+        // Close the issue details modal
+        setShowModal(false);
+        
+        // Clear the selected issue
+        setSelectedIssue(null);
+        
+        // Show success message
+        toast.success('Issue approved successfully');
+        
+        // Refresh the issues list
+        await fetchIssues();
+        
         return true;
       }
       return false;
@@ -99,26 +112,30 @@ const IssuePanel: React.FC = () => {
   const openApproveModal = (issue: Issue) => {
     setCommentIssue(issue);
     setApproveComment('');
+    // Close the details modal and open approve modal
+    setShowModal(false);
     setShowApproveModal(true);
   };
+  
+  // openRejectCommentModal is now defined below in the code
 
   const handleRejectIssue = async (issueId: number) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         console.error('No authentication token found');
-        return;
+        return false;
       }
 
       // Make sure we have a comment
       if (!rejectComment.trim()) {
         toast.error('Please provide a reason for rejection');
-        return;
+        return false;
       }
 
       // Send the comment with the rejection request
-      await axios.post(
-        `${backendUrl}/api/issues/${issueId}/reject-root`,
+      const response = await axios.post(
+        `${backendUrl}/issues/${issueId}/reject-root`,
         { comment: rejectComment },
         {
           headers: {
@@ -128,13 +145,20 @@ const IssuePanel: React.FC = () => {
         }
       );
 
-      // Clear form and close modals
-      setRejectComment('');
-      setShowCommentModal(false);
-      setShowModal(false); // Close the issue details modal
-
-      // Refresh issues to show updated status and comment
-      await fetchIssues();
+      if (response.data.success) {
+        // Clear form and close modals
+        setRejectComment('');
+        setShowCommentModal(false);
+        setCommentIssue(null);
+        
+        // Show success message
+        toast.success('Issue rejected successfully');
+        
+        // Refresh issues to show updated status and comment
+        await fetchIssues();
+        return true;
+      }
+      return false;
 
       toast.success('Issue rejected successfully');
     } catch (error: any) {
@@ -271,35 +295,32 @@ const IssuePanel: React.FC = () => {
                       <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                         #{issue.id}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                         {issue.complaintType}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)} whitespace-nowrap`}>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
                           {issue.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priorityLevel)} whitespace-nowrap`}>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priorityLevel)}`}>
                           {issue.priorityLevel}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                         {issue.location}
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => {
-                              setSelectedIssue(issue);
-                              setShowModal(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Details"
-                          >
-                            <FiEye size={18} />
-                          </button>
-                        </div>
+                      <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
+                        <button
+                          onClick={() => {
+                            setSelectedIssue(issue);
+                            setShowModal(true);
+                          }}
+                          className="text-indigo-600 hover:text-indigo-900 mr-3"
+                        >
+                          <FiEye className="h-5 w-5" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -333,8 +354,16 @@ const IssuePanel: React.FC = () => {
       {/* Reject Comment Modal */}
       <RejectCommentModal
         isOpen={showCommentModal}
-        onClose={() => setShowCommentModal(false)}
-        onSubmit={(issue) => {
+        onClose={() => {
+          setShowCommentModal(false);
+          setCommentIssue(null);
+        }}
+        onSubmit={async (issue) => {
+          const success = await handleRejectIssue(issue.id);
+          if (success) {
+            setShowCommentModal(false);
+            setCommentIssue(null);
+          }
           if (commentIssue) {
             setShowApproveModal(false); 
             handleRejectIssue(issue.id);
@@ -353,12 +382,22 @@ const IssuePanel: React.FC = () => {
       {/* Approve Comment Modal */}
       <RejectCommentModal
         isOpen={showApproveModal}
-        onClose={() => setShowApproveModal(false)}
+        onClose={() => {
+          setShowApproveModal(false);
+          setApproveComment('');
+        }}
         onSubmit={async () => {
-         if (commentIssue) {
-           setShowApproveModal(false); 
-           await handleApproveIssue(commentIssue, approveComment);
+          if (commentIssue) {
+            const success = await handleApproveIssue(commentIssue, approveComment);
+            if (success) {
+              setShowApproveModal(false);
+              setApproveComment('');
+              setShowModal(false);
+              setSelectedIssue(null);
+            }
+            return success;
           }
+          return false;
         }}
         comment={approveComment}
         setComment={setApproveComment}

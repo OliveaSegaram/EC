@@ -25,11 +25,27 @@ const protect = (req, res, next) => {
 // Middleware to check if user has required role(s)
 const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    console.log('Authorize middleware - Checking roles:', roles);
+    console.log('User from request:', req.user);
+    
+    if (!req.user) {
+      console.log('No user found in request');
       return res.status(403).json({ 
-        message: `Forbidden: You don't have permission to perform this action` 
+        message: `Forbidden: No user information found` 
       });
     }
+    
+    console.log('User role from token:', req.user.role);
+    console.log('Required roles:', roles);
+    
+    if (!roles.includes(req.user.role)) {
+      console.log(`User role ${req.user.role} not in required roles:`, roles);
+      return res.status(403).json({ 
+        message: `Forbidden: Requires one of these roles: ${roles.join(', ')}` 
+      });
+    }
+    
+    console.log('User authorized with role:', req.user.role);
     next();
   };
 };

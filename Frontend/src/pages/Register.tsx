@@ -72,7 +72,7 @@ const Register = () => {
     confirmPassword: string;
     role: string;
     districtId: string;
-    skillId: string;
+    skillId: string[]; // Changed to array of strings
     description: string;
     attachment: File | null;
   }
@@ -85,7 +85,7 @@ const Register = () => {
     confirmPassword: '',
     role: '',
     districtId: '',
-    skillId: '',
+    skillId: [],
     description: '',
     attachment: null
   });
@@ -104,7 +104,7 @@ const Register = () => {
         ...prev,
         [name]: value,
         // Reset skillId when role changes to non-technical
-        ...(name === 'role' && value !== 'technical_officer' && { skillId: '' })
+        ...(name === 'role' && value !== 'technical_officer' && { skillId: [] })
       };
 
       // If role is changed to a head office role, set district to Colombo Head Office
@@ -117,7 +117,7 @@ const Register = () => {
         }
       }
 
-      return newFormData;
+      return newFormData as FormData;
     });
 
     // Show skills section only for Technical Officer role
@@ -128,10 +128,21 @@ const Register = () => {
 
   const handleSkillChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      skillId: checked ? value : ''
-    }));
+    setFormData(prev => {
+      const currentSkills = Array.isArray(prev.skillId) ? [...prev.skillId] : [];
+      
+      if (checked) {
+        // Add skill if checked and not already in the array
+        if (!currentSkills.includes(value)) {
+          return { ...prev, skillId: [...currentSkills, value] };
+        }
+      } else {
+        // Remove skill if unchecked
+        return { ...prev, skillId: currentSkills.filter(id => id !== value) };
+      }
+      
+      return prev;
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,16 +154,28 @@ const Register = () => {
     e.preventDefault();
 
     const validateForm = () => {
-      const { nic, password, confirmPassword, districtId } = formData;
+      const { nic, password, confirmPassword, role, skillId, districtId } = formData;
+      
+      const requiredFields = ['nic', 'username', 'email', 'password', 'confirmPassword', 'role', 'districtId'];
+      for (const field of requiredFields) {
+        if (!formData[field as keyof typeof formData]) {
+          toast.error(`Please fill in all required fields. Missing: ${field}`);
+          return false;
+        }
+      }
 
-      if (!nic.trim()) {
-        setError('NIC is required');
+      // NIC validation: 12 digits OR 9 digits followed by v/V/x/X
+      const nicRegex = /^(\d{12}|\d{9}[vVxX])$/;
+      if (!nicRegex.test(nic)) {
+        toast.error('Please enter a valid NIC (12 digits or 9 digits followed by v/V/x/X)');
         return false;
       }
 
-      if (formData.role === 'technical_officer' && !formData.skillId) {
-        toast.error('Please select a skill');
-        return false;
+      if (role === 'technical_officer') {
+        if (!skillId || (Array.isArray(skillId) && skillId.length === 0)) {
+          toast.error('Please select at least one skill');
+          return false;
+        }
       }
 
       if (!districtId) {
@@ -161,7 +184,7 @@ const Register = () => {
       }
 
       if (password !== confirmPassword) {
-        setError('Passwords do not match');
+        toast.error('Passwords do not match');
         return false;
       }
 
@@ -194,10 +217,24 @@ const Register = () => {
       payload.append('email', formData.email);
       payload.append('password', formData.password);
       payload.append('role', formData.role);
-      payload.append('districtId', formData.districtId);
+      
+      // Always include districtId, it will be set to Colombo Head Office for relevant roles
+      const districtIdToSend = formData.districtId || 
+        (['super_admin', 'super_user', 'technical_officer'].includes(formData.role) && 
+         districts.find(d => d.name === 'Colombo Head Office')?.id);
+      
+      if (districtIdToSend) {
+        payload.append('districtId', districtIdToSend.toString());
+      }
 
-      // Add skillId (use default '1' for non-technical roles)
-      payload.append('skillId', formData.role === 'technical_officer' ? formData.skillId : '1');
+      // Add skillIds (use default '1' for non-technical roles)
+      if (formData.role === 'technical_officer') {
+        // Convert array of skill IDs to comma-separated string
+        const skillIds = Array.isArray(formData.skillId) ? formData.skillId.join(',') : '';
+        payload.append('skillId', skillIds);
+      } else {
+        // For non-technical roles, we don't need to send skillId as the backend will handle it
+      }
 
       // Add description if provided
       if (formData.description) {
@@ -256,12 +293,13 @@ const Register = () => {
   }
 
   if (error) {
+    toast.error(error);
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center p-6 max-w-md mx-4 bg-red-50 rounded-lg">
           <div className="text-red-500 text-4xl mb-4">⚠️</div>
           <h2 className="text-xl font-semibold text-red-700 mb-2">{t('Error Loading Form')}</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-4">An error occurred while loading the form. Please try again.</p>
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
@@ -385,22 +423,27 @@ const Register = () => {
               <div className="mb-3">
                 <p className="text-sm text-gray-600 mb-2 ml-1">{t('Select your skills')} *</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {skills.map(skill => (
-                    <label key={skill.id} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="skillId"
-                        value={skill.id}
-                        checked={formData.skillId === skill.id.toString()}
-                        onChange={handleSkillChange}
-                        className="rounded text-purple-600 focus:ring-purple-500"
-                        required={formData.role === 'technical_officer' && skills.length > 0}
-                      />
-                      <span className="text-sm">{skill.name}</span>
-                    </label>
-                  ))}
+                  {skills.map(skill => {
+                    const isChecked = Array.isArray(formData.skillId) 
+                      ? formData.skillId.includes(skill.id.toString())
+                      : false;
+                      
+                    return (
+                      <label key={skill.id} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="skills"
+                          value={skill.id}
+                          checked={isChecked}
+                          onChange={handleSkillChange}
+                          className="rounded text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-sm">{skill.name}</span>
+                      </label>
+                    );
+                  })}
                 </div>
-                {formData.role === 'technical_officer' && !formData.skillId && (
+                {formData.role === 'technical_officer' && (!formData.skillId || formData.skillId.length === 0) && (
                   <p className="mt-1 text-sm text-red-500">{t('Please select at least one skill')}</p>
                 )}
               </div>

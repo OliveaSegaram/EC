@@ -19,12 +19,12 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage,
   // Log all form fields for debugging
-  onFileUploadStart: function(file, req, res) {
+  onFileUploadStart: function(file, req, _res) {
     console.log('Upload starting for', file.originalname);
     console.log('Form fields:', req.body);
   },
   // Log when upload is complete
-  onFileUploadComplete: function(file, req, res) {
+  onFileUploadComplete: function(file, _req, _res) {
     console.log('Upload complete for', file.originalname);
   }
 });

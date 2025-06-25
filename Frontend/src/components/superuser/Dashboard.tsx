@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useContext } from 'react';
-import { FiCheckCircle, FiLayers, FiThumbsUp, FiEye, FiUser, FiChevronDown } from 'react-icons/fi';
+import { FiCheckCircle, FiLayers, FiEye, FiUser, FiChevronDown, FiFileText } from 'react-icons/fi';
 import axios from 'axios';
+
+import { toast } from 'react-toastify';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
 import { AppContext } from '../../provider/AppContext';
+import ReportGenerator from './ReportGenerator';
 
 interface TechnicalOfficer {
   id: number;
@@ -29,6 +32,7 @@ interface Issue {
   underWarranty: boolean;
   user: User;
   assignedTo: User | null;
+  comment?: string; // Add comment field
   approvals: Array<{
     id: number;
     approvalLevel: string;
@@ -45,14 +49,18 @@ const Dashboard = () => {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [currentComment, setCurrentComment] = useState('');
+  const [showReportModal, setShowReportModal] = useState(false);
   const [technicalOfficers, setTechnicalOfficers] = useState<TechnicalOfficer[]>([]);
   const [selectedOfficer, setSelectedOfficer] = useState<TechnicalOfficer | null>(null);
   const [showOfficerDropdown, setShowOfficerDropdown] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [overviewStats, setOverviewStats] = useState({
     totalIssues: 0,
-    dcApprovedIssues: 0,
-    superUserApprovedIssues: 0,
+    completedIssues: 0,
+    underProcurementIssues: 0,
   });
 
   useEffect(() => {
@@ -123,21 +131,29 @@ const Dashboard = () => {
         return;
       }
 
-      // Filter issues to show only approved by Super Admin in the overview
-      const approvedIssues = response.data.issues.filter((issue: Issue) => 
-        issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED
-      );
+      // Filter issues to show in the dashboard
+      const filteredIssues = response.data.issues.filter((issue: Issue) => {
+        // For computer repair issues, show if status is 'under procurement' or 'super admin approved' but not 'resolved'
+        if (issue.complaintType === 'Computer Repair') {
+          return issue.status === 'Under Procurement' || 
+                 issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED;
+        }
+        // For other issue types, show only super admin approved
+        return issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED;
+      });
       
-      setIssues(approvedIssues);
+      setIssues(filteredIssues);
       
       // Update overview stats
       const allIssues = response.data.issues;
       setOverviewStats({
         totalIssues: allIssues.length,
-        dcApprovedIssues: allIssues.filter((issue: Issue) => issue.status === ISSUE_STATUS.DC_APPROVED).length,
-        superUserApprovedIssues: allIssues.filter((issue: Issue) => 
-          issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED || 
-          issue.status === ISSUE_STATUS.ASSIGNED
+        completedIssues: allIssues.filter((issue: Issue) => 
+          issue.status === 'Completed' || issue.status === ISSUE_STATUS.RESOLVED
+        ).length,
+        underProcurementIssues: allIssues.filter((issue: Issue) => 
+          issue.status === 'Under Procurement' || 
+          (issue.complaintType === 'Computer Repair' && issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED)
         ).length,
       });
     } catch (error: any) {
@@ -150,24 +166,39 @@ const Dashboard = () => {
 
   const handleViewIssue = (issue: Issue) => {
     setSelectedIssue(issue);
+    setCurrentComment(''); // Reset comment when opening modal
     setShowViewModal(true);
   };
 
-  const handleAssignIssue = async (issueId: number) => {
-    try {
-      if (!selectedOfficer) {
-        alert('Please select a technical officer');
-        return;
-      }
+  const modalRef = useRef<HTMLDivElement>(null);
 
+  // Handle click outside to close modal
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        setShowViewModal(false);
+      }
+    };
+
+    if (showViewModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showViewModal]);
+
+  const handleAssignIssue = async (issueId: number) => {
+    if (!selectedOfficer || isAssigning) return;
+    
+    setIsAssigning(true);
+    
+    try {
       const token = localStorage.getItem('token');
       if (!token) {
         console.error('No authentication token found');
-        return;
-      }
-
-      // Show confirmation dialog
-      if (!window.confirm(`Are you sure you want to assign this issue to ${selectedOfficer.username}?`)) {
+        setIsAssigning(false);
         return;
       }
 
@@ -181,22 +212,21 @@ const Dashboard = () => {
 
       if (response.data.success) {
         // Update the issue in the local state
-        setIssues(issues.map(issue => 
-          issue.id === issueId 
-            ? { 
-                ...issue, 
-                status: 'Assigned to Technician',
-                assignedTo: selectedOfficer
-              } 
-            : issue
-        ));
+        setIssues(prevIssues => 
+          prevIssues.map(issue => 
+            issue.id === issueId 
+              ? { 
+                  ...issue, 
+                  status: 'Assigned to Technician',
+                  assignedTo: selectedOfficer
+                } 
+              : issue
+          )
+        );
         
         // Close the modal and reset selection
         setShowViewModal(false);
         setSelectedOfficer(null);
-        
-        // Show success message
-        alert(`Issue assigned to ${selectedOfficer.username} successfully`);
       }
     } catch (error) {
       console.error('Error assigning issue:', error);
@@ -207,6 +237,85 @@ const Dashboard = () => {
   const handleOfficerSelect = (officer: TechnicalOfficer) => {
     setSelectedOfficer(officer);
     setShowOfficerDropdown(false);
+  };
+
+  const handleUpdateStatus = async (status: string, comment: string = '') => {
+    if (!selectedIssue) return;
+    
+    try {
+      setIsUpdatingStatus(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication error. Please log in again.');
+        return;
+      }
+
+      // Log the status being sent
+      console.log('Updating status to:', status);
+      
+      // Prepare the update data
+      const updateData: any = { status };
+      
+      // Add comment if provided
+      if (comment.trim()) {
+        updateData.comment = comment;
+      }
+      
+      console.log('Sending update data:', updateData);
+
+      const response = await axios.put(
+        `${backendUrl}/issues/${selectedIssue.id}`,
+        updateData,
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
+      );
+
+      if (response.data.issue) {
+        // Remove the issue from the list if it's completed
+        if (status === 'Completed') {
+          setIssues(prevIssues => 
+            prevIssues.filter(issue => issue.id !== selectedIssue.id)
+          );
+        } else {
+          // Update the issue in the list
+          setIssues(prevIssues => 
+            prevIssues.map(issue => 
+              issue.id === selectedIssue.id 
+                ? { ...issue, status, comment: comment || issue.comment }
+                : issue
+            )
+          );
+        }
+        
+        // Close the modal
+        setShowViewModal(false);
+        
+        // Clear the input field
+        setCurrentComment('');
+        
+        // Show success message
+        toast.success('Status updated successfully');
+      } else {
+        throw new Error('Failed to update status');
+      }
+    } catch (error: any) {
+      console.error(`Error updating status to ${status}:`, error);
+      toast.error(error.response?.data?.message || `Failed to update status to ${status}`);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const isComputerRepairUnderWarranty = (issue: Issue) => {
+    return issue.complaintType === 'Computer Repair' && issue.underWarranty;
+  };
+
+  const shouldShowTechnicianAssignment = (issue: Issue) => {
+    return !isComputerRepairUnderWarranty(issue);
   };
 
   const getStatusColor = (status: string) => {
@@ -252,8 +361,22 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="p-4">
+    <div className="container mx-auto py-4 px-4">
+      <div className="flex justify-end mb-4">
+        <button 
+          onClick={() => setShowReportModal(true)}
+          className="flex items-center gap-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-gradient-to-br from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+        >
+          <FiFileText /> Generate Report
+        </button>
+      </div>
+      
+      {/* Report Generator Modal */}
+      <ReportGenerator 
+        show={showReportModal} 
+        onHide={() => setShowReportModal(false)} 
+      />
+      <div className="p-4 bg-white rounded-lg shadow">
   {/* Overview Stats */}
   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
     <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 flex items-center space-x-4">
@@ -267,22 +390,22 @@ const Dashboard = () => {
     </div>
 
     <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 flex items-center space-x-4">
-      <div className="bg-yellow-100 text-yellow-600 p-2 rounded-md">
+      <div className="bg-purple-100 text-purple-600 p-2 rounded-md">
         <FiCheckCircle size={24} />
       </div>
       <div>
-        <h3 className="text-sm font-medium text-gray-700">DC Approved</h3>
-        <p className="text-xl font-bold text-yellow-600">{overviewStats.dcApprovedIssues}</p>
+        <h3 className="text-sm font-medium text-gray-700">Completed</h3>
+        <p className="text-xl font-bold text-purple-600">{overviewStats.completedIssues}</p>
       </div>
     </div>
 
     <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 flex items-center space-x-4">
-      <div className="bg-green-100 text-green-600 p-2 rounded-md">
-        <FiThumbsUp size={24} />
+      <div className="bg-yellow-100 text-yellow-600 p-2 rounded-md">
+        <FiLayers size={24} />
       </div>
       <div>
-        <h3 className="text-sm font-medium text-gray-700">Super User Approved</h3>
-        <p className="text-xl font-bold text-green-600">{overviewStats.superUserApprovedIssues}</p>
+        <h3 className="text-sm font-medium text-gray-700">Under Procurement</h3>
+        <p className="text-xl font-bold text-yellow-600">{overviewStats.underProcurementIssues}</p>
       </div>
     </div>
   </div>
@@ -356,14 +479,11 @@ const Dashboard = () => {
       {/* View Issue Modal */}
       {showViewModal && selectedIssue && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div ref={modalRef} className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             {/* Gradient Header */}
             <div className="bg-gradient-to-r from-purple-700 to-purple-900 text-white p-6 rounded-t-xl">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-2xl font-bold text-white">Issue Details</h3>
-                  <p className="text-sm text-purple-100 mt-1">ID: #{selectedIssue.id}</p>
-                </div>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-white">Issue Details</h2>
                 <button 
                   onClick={() => setShowViewModal(false)}
                   className="text-purple-200 hover:text-white focus:outline-none transition-colors duration-200"
@@ -447,70 +567,123 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="mb-4">
-                  <label htmlFor="technical-officer" className="block text-sm font-medium text-gray-700 mb-1">
-                    Assign to Technical Officer
-                  </label>
-                  <div className="relative" ref={dropdownRef}>
+              {/* Comment Section for Computer Repair Under Warranty */}
+              {selectedIssue && isComputerRepairUnderWarranty(selectedIssue) && (
+                <>
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h4 className="text-lg font-medium text-gray-900 mb-4">Warranty Information</h4>
+                    
+                    <div className="mb-4">
+                      <label htmlFor="warranty-comment" className="block text-sm font-medium text-gray-700 mb-2">
+                        Add Notes (optional)
+                      </label>
+                      <textarea
+                        id="warranty-comment"
+                        rows={3}
+                        className="shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border border-gray-300 rounded-md p-2"
+                        placeholder="Enter any notes or instructions..."
+                        value={currentComment}
+                        onChange={(e) => setCurrentComment(e.target.value)}
+                        disabled={isUpdatingStatus}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-blue-50 rounded-md">
+                    <p className="text-sm text-blue-700">
+                      <span className="font-medium">Note:</span> This is a computer repair under warranty. No technician assignment is needed.
+                    </p>
+                  </div>
+
+                  {/* Action Buttons for Warranty Issues */}
+                  <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end space-x-3">
                     <button
                       type="button"
-                      onClick={() => setShowOfficerDropdown(!showOfficerDropdown)}
-                      className="relative w-full bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-default focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                      onClick={() => handleUpdateStatus('Under Procurement', currentComment)}
+                      disabled={isUpdatingStatus}
+                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <span className="flex items-center">
-                        <FiUser className="flex-shrink-0 h-5 w-5 text-gray-400" />
-                        <span className="ml-3 block truncate">
-                          {selectedOfficer ? selectedOfficer.username : 'Select a technical officer'}
-                        </span>
-                      </span>
-                      <span className="ml-3 absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                        <FiChevronDown className="h-5 w-5 text-gray-400" />
-                      </span>
+                      {isUpdatingStatus ? 'Updating...' : 'Under Procurement'}
                     </button>
-                    
-                    {showOfficerDropdown && (
-                      <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-56 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-                        {technicalOfficers.length > 0 ? (
-                          technicalOfficers.map((officer) => (
-                            <div
-                              key={officer.id}
-                              className={`${
-                                selectedOfficer?.id === officer.id ? 'bg-purple-100 text-purple-900' : 'text-gray-900'
-                              } cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-purple-50`}
-                              onClick={() => handleOfficerSelect(officer)}
-                            >
-                              <div className="flex items-center">
-                                <FiUser className="flex-shrink-0 h-5 w-5 text-gray-400" />
-                                <span className="ml-3 block font-normal truncate">
-                                  {officer.username} ({officer.email})
-                                </span>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus('Completed', currentComment)}
+                      disabled={isUpdatingStatus}
+                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isUpdatingStatus ? 'Updating...' : 'Mark as Completed'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Technician Assignment Section - Only show for non-warranty computer repairs */}
+              {selectedIssue && shouldShowTechnicianAssignment(selectedIssue) && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="mb-4">
+                    <label htmlFor="technical-officer" className="block text-sm font-medium text-gray-700 mb-1">
+                      Assign to Technical Officer
+                    </label>
+                    <div className="relative" ref={dropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setShowOfficerDropdown(!showOfficerDropdown)}
+                        className="relative w-full bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-default focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                      >
+                        <span className="flex items-center">
+                          <FiUser className="flex-shrink-0 h-5 w-5 text-gray-400" />
+                          <span className="ml-3 block truncate">
+                            {selectedOfficer ? selectedOfficer.username : 'Select a technical officer'}
+                          </span>
+                        </span>
+                        <span className="ml-3 absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                          <FiChevronDown className="h-5 w-5 text-gray-400" />
+                        </span>
+                      </button>
+                      
+                      {showOfficerDropdown && (
+                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-56 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                          {technicalOfficers.length > 0 ? (
+                            technicalOfficers.map((officer) => (
+                              <div
+                                key={officer.id}
+                                className={`${
+                                  selectedOfficer?.id === officer.id ? 'bg-purple-100 text-purple-900' : 'text-gray-900'
+                                } cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-purple-50`}
+                                onClick={() => handleOfficerSelect(officer)}
+                              >
+                                <div className="flex items-center">
+                                  <FiUser className="flex-shrink-0 h-5 w-5 text-gray-400" />
+                                  <span className="ml-3 block font-normal truncate">
+                                    {officer.username} ({officer.email})
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-gray-500 py-2 pl-3">No technical officers found</div>
-                        )}
-                      </div>
-                    )}
+                            ))
+                          ) : (
+                            <div className="text-gray-500 py-2 pl-3">No technical officers found</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleAssignIssue(selectedIssue.id)}
+                      disabled={!selectedOfficer || isAssigning}
+                      className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${
+                        !selectedOfficer || isAssigning 
+                          ? 'bg-gray-300 cursor-not-allowed' 
+                          : 'bg-gradient-to-r from-purple-700 to-purple-900 hover:from-purple-800 hover:to-purple-900'
+                      }`}
+                    >
+                      {isAssigning ? 'Assigning...' : `Assign to ${selectedOfficer ? selectedOfficer.username.split(' ')[0] : 'Technician'}`}
+                    </button>
                   </div>
                 </div>
-                
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => handleAssignIssue(selectedIssue.id)}
-                    disabled={!selectedOfficer}
-                    className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${
-                      selectedOfficer 
-                        ? 'bg-gradient-to-r from-purple-700 to-purple-900 hover:from-purple-800 hover:to-purple-900' 
-                        : 'bg-gray-300 cursor-not-allowed'
-                    }`}
-                  >
-                    Assign to {selectedOfficer ? selectedOfficer.username.split(' ')[0] : 'Technician'}
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -519,4 +692,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

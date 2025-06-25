@@ -125,6 +125,26 @@ const ReviewPanel: React.FC = () => {
         throw new Error('Authentication token not found');
       }
       
+      // Get and verify user data
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        throw new Error('User data not found. Please log in again.');
+      }
+      
+      let user;
+      try {
+        user = JSON.parse(userData);
+        console.log('Current user role:', user.role);
+        
+        // Check if user has required role
+        if (!['super_admin', 'root'].includes(user.role)) {
+          throw new Error(`Access Denied. Your role (${user.role}) does not have permission to access this page.`);
+        }
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+        throw new Error('Invalid user data. Please log in again.');
+      }
+      
       const url = `${backendUrl}/reviews/review`;
       console.log('Fetching issues from:', url);
       
@@ -158,7 +178,26 @@ const ReviewPanel: React.FC = () => {
       }
       
       if (!response.ok) {
-        console.error('API Error:', data);
+        console.error('API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data,
+          headers: Object.fromEntries([...response.headers.entries()])
+        });
+        
+        if (response.status === 403) {
+          const userData = localStorage.getItem('user');
+          let userRole = 'unknown';
+          try {
+            const user = userData ? JSON.parse(userData) : null;
+            userRole = user?.role || 'not found';
+          } catch (e) {
+            console.error('Error parsing user data:', e);
+          }
+          
+          throw new Error(`Access Denied (403). Your role is: ${userRole}. This action requires 'super_admin' or 'root' role.`);
+        }
+        
         throw new Error(data?.message || `Server returned ${response.status}: ${response.statusText}`);
       }
       

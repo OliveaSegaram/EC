@@ -38,24 +38,47 @@ const AssignedTasks = () => {
   
   // Update filtered issues when issues or activeFilter changes
   useEffect(() => {
+    console.log('Updating filtered issues. Active filter:', activeFilter);
+    console.log('All issues:', issues.map(i => ({ id: i.id, status: i.status })));
+    
     let result = [...issues];
     
     // Apply active filter if any
     if (activeFilter === 'Resolved' || activeFilter === 'Reopened') {
       // Show both Resolved and Reopened issues
-      result = result.filter(issue => 
-        issue.status === 'Resolved' || issue.status === 'Reopened'
-      );
+      result = result.filter(issue => {
+        const normalizedStatus = issue.status.toLowerCase();
+        const matches = 
+          normalizedStatus.includes('resolved') || 
+          normalizedStatus.includes('reopened');
+        
+        console.log(`Issue ${issue.id} (${issue.status}): ${matches ? 'INCLUDED' : 'excluded'}`);
+        return matches;
+      });
     } else if (activeFilter === 'Assigned to Technician') {
       // Handle assigned issues (might be 'Assigned to Technical Officer' or similar)
-      result = result.filter(issue => 
-        issue.status.includes('Assigned') || issue.status.includes('assigned')
-      );
+      result = result.filter(issue => {
+        const normalizedStatus = issue.status.toLowerCase();
+        const matches = 
+          normalizedStatus.includes('assigned') || 
+          normalizedStatus.includes('assigned to technician');
+          
+        console.log(`Issue ${issue.id} (${issue.status}): ${matches ? 'INCLUDED' : 'excluded'}`);
+        return matches;
+      });
     } else if (activeFilter) {
-      // Show only the selected status (for other statuses like 'In Progress')
-      result = result.filter(issue => issue.status === activeFilter);
+      // Show only the selected status (case-insensitive match)
+      result = result.filter(issue => {
+        const normalizedStatus = issue.status.toLowerCase();
+        const normalizedFilter = activeFilter.toLowerCase();
+        const matches = normalizedStatus === normalizedFilter;
+        
+        console.log(`Issue ${issue.id} (${issue.status}): ${matches ? 'INCLUDED' : 'excluded'}`);
+        return matches;
+      });
     }
     
+    console.log('Filtered result:', result.map(i => ({ id: i.id, status: i.status })));
     setFilteredIssues(result);
   }, [issues, activeFilter]);
   
@@ -65,36 +88,109 @@ const AssignedTasks = () => {
     // Normalize status names for counting
     if (status.includes('Assigned') || status.includes('assigned')) {
       status = 'Assigned to Technician';
+    } else if (status === 'Completed' || status === 'Resolved') {
+      status = 'Resolved'; // Combine Completed into Resolved
+    } else if (status === 'Reopened') {
+      status = 'Reopened';
     }
     acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+  
+  // Calculate total completed (resolved + reopened)
+  const totalCompleted = (statusCounts['Resolved'] || 0) + (statusCounts['Reopened'] || 0);
 
   const fetchAssignedIssues = useCallback(async () => {
+    const toastId = toast.loading('Fetching your assigned tasks...');
+    
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        throw new Error('Authentication token not found');
+        throw new Error('Authentication required. Please log in again.');
       }
 
-      const response = await fetch(`${backendUrl}/assignments/my-issues`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      let responseData;
+      let response;
+
+      // First try to get all assigned issues including resolved ones
+      try {
+        response = await fetch(`${backendUrl}/issues/assigned`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        responseData = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(responseData.message || 'Failed to fetch assigned tasks');
         }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch assigned tasks');
+      } catch (error) {
+        console.log('Primary endpoint failed, trying fallback...', error);
+        // Fall back to the original endpoint
+        const fallbackResponse = await fetch(`${backendUrl}/assignments/my-issues`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (!fallbackResponse.ok) {
+          const errorData = await fallbackResponse.json();
+          throw new Error(errorData.message || 'Failed to fetch assigned tasks');
+        }
+        
+        responseData = await fallbackResponse.json();
       }
 
-      const data = await response.json();
-      console.log('Assigned tasks response:', data);
-      setIssues(data.issues || []);
+      console.log('Raw API response:', responseData);
+      console.log('Issues with statuses:', responseData.issues?.map((i: any) => ({
+        id: i.id,
+        status: i.status,
+        description: i.description
+      })));
+      
+      setIssues(responseData.issues || []);
+      
+      // Log status counts for debugging
+      const statusCounts = (responseData.issues || []).reduce((acc: any, issue: any) => {
+        acc[issue.status] = (acc[issue.status] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('Status counts:', statusCounts);
+      
+      toast.update(toastId, {
+        render: responseData.issues?.length 
+          ? `Successfully loaded ${responseData.issues.length} tasks` 
+          : 'No tasks assigned to you',
+        type: 'success',
+        isLoading: false,
+        autoClose: 2000
+      });
+      
     } catch (error: any) {
       console.error('Error fetching assigned tasks:', error);
-      toast.error(error.message || 'Failed to fetch assigned tasks');
+      
+      let errorMessage = 'Failed to fetch assigned tasks';
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        errorMessage = 'Session expired. Please log in again.';
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+        closeButton: true,
+      });
     }
   }, [backendUrl]);
 
@@ -107,17 +203,22 @@ const AssignedTasks = () => {
 
   const handleUpdateStatus = async () => {
     if (!selectedIssue) return;
+    
+    const toastId = toast.loading(`Updating status to ${status}...`);
 
     try {
       let endpoint = '';
       let requestData: UpdateRequestData = { comment };
+      let newStatus = status;
       
       // Determine which endpoint to use based on status
       if (status === 'In Progress') {
         endpoint = `${backendUrl}/assignments/${selectedIssue.id}/start`;
+        newStatus = 'In Progress';
       } else if (status === 'Resolved') {
         endpoint = `${backendUrl}/assignments/${selectedIssue.id}/resolve`;
         requestData = { ...requestData, resolutionDetails: comment };
+        newStatus = 'Resolved';
       } else {
         throw new Error('Invalid status');
       }
@@ -127,40 +228,75 @@ const AssignedTasks = () => {
 
       const token = localStorage.getItem('token');
       if (!token) {
-        throw new Error('Authentication token not found');
+        throw new Error('Authentication required. Please log in again.');
       }
+
+      // Update local state immediately for better UX
+      setIssues(prevIssues => 
+        prevIssues.map(issue => 
+          issue.id === selectedIssue.id 
+            ? { ...issue, status: newStatus, comment: comment || issue.comment }
+            : issue
+        )
+      );
 
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
         },
         body: JSON.stringify(requestData)
       });
 
-      const data = await response.json();
-      console.log('Update response:', data);
+      const responseData = await response.json();
+      console.log('Update response:', responseData);
       
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to update status');
+        // Revert local state if the server update fails
+        setIssues(prevIssues => 
+          prevIssues.map(issue => 
+            issue.id === selectedIssue.id 
+              ? { ...issue, status: selectedIssue.status }
+              : issue
+          )
+        );
+        throw new Error(responseData.message || 'Failed to update status');
       }
 
-      toast.success(data.message || 'Status updated successfully');
+      // Show success message
+      toast.update(toastId, {
+        render: responseData.message || 'Status updated successfully',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+        closeButton: true,
+      });
+      
+      // Close the modal and refresh the list to ensure we have the latest data
       setShowModal(false);
       fetchAssignedIssues();
+      
     } catch (error: any) {
       console.error('Error updating status:', error);
       
-      if (error.message === 'Authentication token not found' || 
-          error.message.includes('401') || 
-          error.message.includes('403')) {
-        toast.error('Session expired. Please log in again.');
+      let errorMessage = 'Failed to update status';
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        errorMessage = 'Session expired. Please log in again.';
         localStorage.removeItem('token');
         window.location.href = '/login';
-      } else {
-        toast.error(error.message || 'Failed to update status');
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+        closeButton: true,
+      });
     }
   };
 
@@ -179,52 +315,60 @@ const AssignedTasks = () => {
 
   return (
     <div className="p-6">
-      <div className="bg-white shadow-sm rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-6">Assigned Tasks</h2>
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+        <div className="p-5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-800">Assigned Tasks</h2>
+        </div>
         
         {/* Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5">
           {/* Assigned to Technician Card */}
           <div 
-            className={`p-6 rounded-xl shadow-lg cursor-pointer transition-all transform hover:scale-[1.02] ${activeFilter === 'Assigned to Technician' ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-500' : 'bg-white hover:shadow-md'}`}
+            className={`p-5 rounded-lg cursor-pointer transition-all duration-200 border ${activeFilter === 'Assigned to Technician' 
+              ? 'border-blue-400 shadow-lg bg-gradient-to-br from-blue-50 to-white' 
+              : 'border-gray-100 bg-white hover:shadow-lg hover:border-blue-200 shadow-sm'}`}
             onClick={() => setActiveFilter(activeFilter === 'Assigned to Technician' ? null : 'Assigned to Technician')}
           >
             <div className="flex items-center justify-between">
-              <div className="p-3 rounded-lg bg-blue-100 text-blue-600">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0111.357-3m1.764-3.643a5.5 5.5 0 010 7.286M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
-              <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
                 {statusCounts['Assigned to Technician'] || 0} Tasks
               </span>
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-gray-800">Assigned</h3>
-            <p className="mt-1 text-sm text-gray-500">Tasks waiting to be started</p>
+            <h3 className="mt-4 text-base font-semibold text-gray-800">Assigned</h3>
+            <p className="mt-1.5 text-sm text-gray-500">Tasks waiting to be started</p>
           </div>
 
           {/* In Progress Card */}
           <div 
-            className={`p-6 rounded-xl shadow-lg cursor-pointer transition-all transform hover:scale-[1.02] ${activeFilter === 'In Progress' ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-l-4 border-amber-500' : 'bg-white hover:shadow-md'}`}
+            className={`p-5 rounded-lg cursor-pointer transition-all duration-200 border ${activeFilter === 'In Progress' 
+              ? 'border-amber-400 shadow-lg bg-gradient-to-br from-amber-50 to-white' 
+              : 'border-gray-100 bg-white hover:shadow-lg hover:border-amber-200 shadow-sm'}`}
             onClick={() => setActiveFilter(activeFilter === 'In Progress' ? null : 'In Progress')}
           >
             <div className="flex items-center justify-between">
-              <div className="p-3 rounded-lg bg-amber-100 text-amber-600">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="p-2.5 rounded-lg bg-amber-50 text-amber-500 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <span className="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
                 {statusCounts['In Progress'] || 0} In Progress
               </span>
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-gray-800">In Progress</h3>
-            <p className="mt-1 text-sm text-gray-500">Tasks currently being worked on</p>
+            <h3 className="mt-4 text-base font-semibold text-gray-800">In Progress</h3>
+            <p className="mt-1.5 text-sm text-gray-500">Tasks currently being worked on</p>
           </div>
 
-          {/* Resolved/Reopened Card */}
+          {/* Completed Card - Shows Resolved + Reopened */}
           <div 
-            className={`p-6 rounded-xl shadow-lg cursor-pointer transition-all transform hover:scale-[1.02] ${activeFilter === 'Resolved' || activeFilter === 'Reopened' ? 'bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-500' : 'bg-white hover:shadow-md'}`}
+            className={`p-5 rounded-lg cursor-pointer transition-all duration-200 border ${activeFilter === 'Resolved' || activeFilter === 'Reopened'
+              ? 'border-green-400 shadow-lg bg-gradient-to-br from-green-50 to-white' 
+              : 'border-gray-100 bg-white hover:shadow-lg hover:border-green-200 shadow-sm'}`}
             onClick={() => {
               if (activeFilter === 'Resolved' || activeFilter === 'Reopened') {
                 setActiveFilter(null);
@@ -234,24 +378,49 @@ const AssignedTasks = () => {
             }}
           >
             <div className="flex items-center justify-between">
-              <div className="p-3 rounded-lg bg-green-100 text-green-600">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="p-2.5 rounded-lg bg-green-50 text-green-500 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <div className="flex space-x-2">
-                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  {statusCounts['Resolved'] || 0} Resolved
-                </span>
-                <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                  {statusCounts['Reopened'] || 0} Reopened
-                </span>
-              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-100">
+                {totalCompleted} Total
+              </span>
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-gray-800">Completed</h3>
-            <p className="mt-1 text-sm text-gray-500">Tasks that are resolved or need review</p>
+            <h3 className="mt-4 text-base font-semibold text-gray-800">Resolved Tasks</h3>
+            <p className="mt-1.5 text-sm text-gray-500">Tasks that are resolved or need review</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                {statusCounts['Resolved'] || 0} Resolved
+              </span>
+              {statusCounts['Reopened'] > 0 && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                  {statusCounts['Reopened']} Reopened
+                </span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* No issues message */}
+        {filteredIssues.length === 0 && (
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 rounded-r">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h2a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-blue-700">
+                  {activeFilter 
+                    ? `No tasks found with status "${activeFilter}"`
+                    : 'No tasks assigned to you yet'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="overflow-x-auto bg-white shadow-md rounded-xl">
           <table className="min-w-full divide-y divide-gray-200">
@@ -342,36 +511,45 @@ const AssignedTasks = () => {
                   </a>
                 </div>
               )}
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Comment</h4>
-                <textarea
-                  className="w-full border rounded-md px-3 py-2 mt-1"
-                  rows={3}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Add your comment"
-                />
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  className={`px-4 py-2 rounded-md border ${status === 'In Progress' ? 'bg-yellow-100 text-yellow-800 border-yellow-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
-                  onClick={() => setStatus('In Progress')}
-                >
-                  In Progress
-                </button>
-                <button
-                  className={`px-4 py-2 rounded-md border ${status === 'Resolved' ? 'bg-green-100 text-green-800 border-green-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
-                  onClick={() => setStatus('Resolved')}
-                >
-                  Resolved
-                </button>
-              </div>
-              <button
-                className="w-full mt-4 bg-purple-700 text-white py-2 rounded-md hover:bg-purple-800 transition"
-                onClick={handleUpdateStatus}
-              >
-                Update
-              </button>
+              
+              {!['Resolved', 'resolved', 'Completed', 'completed'].includes(selectedIssue.status) ? (
+                <>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Comment</h4>
+                    <textarea
+                      className="w-full border rounded-md px-3 py-2 mt-1"
+                      rows={3}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="Add your comment"
+                    />
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      className={`px-4 py-2 rounded-md border ${status === 'In Progress' ? 'bg-yellow-100 text-yellow-800 border-yellow-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
+                      onClick={() => setStatus('In Progress')}
+                    >
+                      In Progress
+                    </button>
+                    <button
+                      className={`px-4 py-2 rounded-md border ${status === 'Resolved' ? 'bg-green-100 text-green-800 border-green-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
+                      onClick={() => setStatus('Resolved')}
+                    >
+                      Resolved
+                    </button>
+                  </div>
+                  <button
+                    className="w-full mt-4 bg-purple-700 text-white py-2 rounded-md hover:bg-purple-800 transition"
+                    onClick={handleUpdateStatus}
+                  >
+                    Update
+                  </button>
+                </>
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                  <p className="text-sm text-gray-600">This issue is marked as resolved and cannot be modified.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

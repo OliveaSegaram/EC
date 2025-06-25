@@ -443,7 +443,7 @@ const RegistrationPanel: React.FC = () => {
                   <div className="md:col-span-2">
                     <h4 className="text-sm font-medium text-gray-500">Attachment</h4>
                     <a
-                      href={`${backendUrl}/${selectedUser.attachment.split(/[\\/]/).pop()}`}
+                      href={`${backendUrl}/uploads/${selectedUser.attachment.split(/[\\/]/).pop()}`}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-1 inline-block px-3 py-1 bg-blue-50 text-blue-600 hover:text-blue-800 rounded border border-blue-200 transition-colors"

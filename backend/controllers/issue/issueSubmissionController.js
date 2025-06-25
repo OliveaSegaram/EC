@@ -130,13 +130,21 @@ exports.updateIssue = async (req, res) => {
         : statusUpdate;
     }
     
-    // Update all fields
+    // Update all fields including status if provided
     issue.deviceId = deviceId || issue.deviceId;
     issue.complaintType = complaintType || issue.complaintType;
     issue.description = description || issue.description;
     issue.priorityLevel = priorityLevel || issue.priorityLevel;
     issue.location = location || issue.location;
     issue.underWarranty = underWarranty !== undefined ? underWarranty : issue.underWarranty;
+    
+    // Update status if provided
+    console.log('Current issue status:', issue.status);
+    console.log('Requested status update to:', status);
+    if (status) {
+      issue.status = status;
+      console.log('Status updated to:', issue.status);
+    }
 
     // Handle file upload if present
     if (req.file) {
@@ -145,14 +153,18 @@ exports.updateIssue = async (req, res) => {
       issue.attachment = req.file.filename;
     }
 
-    // Save the updated issue
-    await issue.save({
-      fields: ['deviceId', 'complaintType', 'description', 'priorityLevel', 'location', 'underWarranty', 'attachment', 'comment']
+    // Save the updated issue with all fields including status
+    console.log('Saving issue with status:', issue.status);
+    const updatedIssue = await issue.save({
+      fields: ['deviceId', 'complaintType', 'description', 'priorityLevel', 
+               'location', 'underWarranty', 'attachment', 'comment', 'status']
     });
+    
+    console.log('Issue saved successfully. New status:', updatedIssue.status);
 
     res.status(200).json({
       message: 'Issue updated successfully',
-      issue
+      issue: updatedIssue
     });
   } catch (error) {
     console.error('Error updating issue:', error);

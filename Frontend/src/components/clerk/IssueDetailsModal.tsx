@@ -6,7 +6,9 @@ import {
   FiCheckCircle,
   FiRefreshCw
 } from 'react-icons/fi';
+import { toast } from 'react-toastify';
 import { AppContext } from '../../provider/AppContext';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Issue {
   id: number;
@@ -48,7 +50,14 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
 
   const handleViewAttachment = () => {
     if (issue.attachment) {
-      window.open(`${backendUrl}/${issue.attachment}`, '_blank');
+      try {
+        window.open(`${backendUrl}/${issue.attachment}`, '_blank');
+      } catch (error) {
+        toast.error('Failed to open attachment. Please try again.');
+        console.error('Error opening attachment:', error);
+      }
+    } else {
+      toast.info('No attachment available for this issue.');
     }
   };
 
@@ -247,7 +256,15 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
             {issue.status === 'Completed' && onReopen && (
               <button
                 type="button"
-                onClick={() => onReopen(issue.id)}
+                onClick={async () => {
+                  try {
+                    await onReopen(issue.id);
+                    toast.success('Issue has been reopened successfully');
+                  } catch (error) {
+                    toast.error('Failed to reopen issue. Please try again.');
+                    console.error('Error reopening issue:', error);
+                  }
+                }}
                 className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-200 flex items-center"
               >
                 <FiRefreshCw className="mr-2" />

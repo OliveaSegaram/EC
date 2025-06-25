@@ -1,6 +1,8 @@
 import React from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import { useAppContext } from '../../provider/AppContext';
+import 'react-toastify/dist/ReactToastify.css';
 
 
 interface Issue {
@@ -42,23 +44,58 @@ const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({
     if (!deleteConfirm.issue) return;
     
     setIsDeleting(true);
+    const toastId = toast.loading('Deleting issue...');
+    
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+      
       await axios.delete(`${backendUrl}/issues/${deleteConfirm.issue.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       
-      alert('Issue deleted successfully');
-    } catch (error: any) {
-      if (error?.response?.status === 404) {
-        alert('Issue not found or already deleted.');
-      } else {
-        alert('Failed to delete issue: ' + (error?.response?.data?.message || error.message || error));
-      }
-    } finally {
+      toast.update(toastId, {
+        render: 'Issue deleted successfully',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000
+      });
+      
+      // Close the modal and refresh the issues list
       setDeleteConfirm({ open: false, issue: null });
       fetchIssues();
-      setIsDeleting(false);
+      
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      
+      let errorMessage = 'Failed to delete issue';
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        errorMessage = 'Session expired. Please log in again.';
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      } else if (error?.response?.status === 404) {
+        errorMessage = 'Issue not found or already deleted.';
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000
+      });
+    } finally {
+      if (!toast.isActive(toastId)) {
+        setIsDeleting(false);
+      }
     }
   };
   

@@ -4,6 +4,7 @@ import { useAuth } from '../provider/AuthProvider';
 import { AppContext } from '../provider/AppContext';
 import { LoginAssets } from '../assets/icons/login/login';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'react-toastify';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -35,13 +36,13 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nic || !password) {
-      alert(t('NIC and password are required'));
+      toast.error(t('NIC and password are required'));
       return;
     }
     
     // Validate NIC format
     if (!/^(\d{12}|\d{9}[vVxX])$/.test(nic)) {
-      alert(t('Please enter a valid NIC'));
+      toast.error(t('Please enter a valid NIC'));
       return;
     }
     
@@ -55,24 +56,31 @@ const Login = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Login failed');
 
+      // Store user data in localStorage
+      localStorage.setItem('user', JSON.stringify({
+        role: data.role,
+        username: data.username || nic,
+        email: data.email || ''
+      }));
+
       setToken(data.token);
       setIsLoggedIn(true);
       navigate(`/dashboard/${data.role}`);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Login failed');
     }
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotNic) {
-      setForgotMsg('Please enter your NIC');
+      toast.error('Please enter your NIC');
       return;
     }
     
     // Validate NIC format
     if (!/^(\d{12}|\d{9}[vVxX])$/.test(forgotNic)) {
-      setForgotMsg('Please enter a valid NIC');
+      toast.error('Please enter a valid NIC');
       return;
     }
 
@@ -86,9 +94,10 @@ const Login = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Login failed');
 
-      setForgotMsg('Check your inbox for the reset link.');
+      toast.success('Check your inbox for the reset link.');
+      setForgotMsg('');
     } catch (err: any) {
-      alert(err.message || 'Failed to send reset email.');
+      toast.error(err.message || 'Failed to send reset email.');
     }
   };
 
@@ -192,7 +201,7 @@ const Login = () => {
                 type="submit"
                 className="w-full bg-purple-700 text-white py-2 rounded mb-2"
               >
-                {t('Send OTP')}
+                {t('Send Email')}
               </button>
               {forgotMsg && <p className="text-sm text-green-600">{forgotMsg}</p>}
             </form>

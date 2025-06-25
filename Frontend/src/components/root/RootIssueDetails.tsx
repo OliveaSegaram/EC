@@ -256,7 +256,8 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                   <h3 className="text-sm font-medium text-gray-500">Actions</h3>
                   <div className="space-y-2">
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (handleApproveIssue) {
                           handleApproveIssue(selectedIssue);
                         }
@@ -267,7 +268,8 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                       Approve Issue
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (openRejectCommentModal) {
                           openRejectCommentModal(selectedIssue);
                         }
