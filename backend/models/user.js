@@ -65,6 +65,14 @@ module.exports = (sequelize, DataTypes) => {
       resetTokenExpiry: {
         type: DataTypes.DATE,
         allowNull: true
+      },
+      status: {
+        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+        defaultValue: 'pending'
+      },
+      rejectionReason: {
+        type: DataTypes.TEXT,
+        allowNull: true
       }
     }, {
       indexes: [
@@ -79,6 +87,14 @@ module.exports = (sequelize, DataTypes) => {
     User.belongsTo(models.Role, {
       foreignKey: 'roleId',
       as: 'role'
+    });
+    
+    // Add District association
+    User.belongsTo(models.District, {
+      foreignKey: 'districtId',
+      as: 'district',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE'
     });
     
     // Explicitly define the relationship to prevent any automatic inclusion of skillId

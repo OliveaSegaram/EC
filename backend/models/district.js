@@ -14,5 +14,12 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false
   });
 
+  District.associate = function(models) {
+    District.hasMany(models.User, {
+      foreignKey: 'districtId',
+      as: 'users'
+    });
+  };
+
   return District;
 };

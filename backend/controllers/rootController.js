@@ -1,11 +1,41 @@
-const { User, Role } = require('../models');
+const { User, Role, District, Skill } = require('../models');
+const sequelize = require('sequelize');
 const sendEmail = require('../utils/sendEmail');
 
 // GET all users
 const getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll({
-      include: Role,
+      include: [
+        {
+          model: Role,
+          attributes: ['id', 'name']
+        },
+        {
+          model: District,
+          as: 'district',
+          attributes: ['id', 'name']
+        },
+        {
+          model: Skill,
+          as: 'skills',
+          attributes: ['id', 'name'],
+          through: { attributes: [] } // Don't include join table attributes
+        }
+      ],
+      attributes: [
+        'id',
+        'nic',
+        'username',
+        'email',
+        'description',
+        'isVerified',
+        'attachment',
+        'status',
+        'rejectionReason',
+        'createdAt',
+        'updatedAt'
+      ],
       order: [['createdAt', 'DESC']]
     });
     res.json(users);
@@ -124,6 +154,7 @@ const approveUser = async (req, res) => {
     }
     
     user.isVerified = true;
+    user.status = 'approved';
     await user.save();
     
     // Send email notification
@@ -170,12 +201,19 @@ const rejectUser = async (req, res) => {
       html: `<p>Your registration was declined.</p><p>Reason: ${rejectionReason}</p><p>Please contact admin for further assistance.</p>`
     });
     
-    // Delete the user
-    await user.destroy();
+    // Update user status to 'rejected' and save the rejection reason
+    user.status = 'rejected';
+    user.rejectionReason = rejectionReason;
+    await user.save();
     
     return res.status(200).json({ 
       success: true, 
-      message: 'User rejected successfully and notification sent' 
+      message: 'User rejected successfully and notification sent',
+      user: {
+        id: user.id,
+        status: user.status,
+        rejectionReason: user.rejectionReason
+      }
     });
   } catch (error) {
     console.error('Error rejecting user:', error);

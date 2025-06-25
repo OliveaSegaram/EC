@@ -12,12 +12,34 @@ const RegistrationPanel: React.FC = () => {
 
   const { backendUrl } = appContex;
 
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<Array<{
+    id: number;
+    username: string;
+    email: string;
+    isVerified: boolean;
+    status: 'pending' | 'approved' | 'rejected';
+    rejectionReason?: string;
+    Role?: { name: string };
+    createdAt: string;
+    attachment?: string;
+    [key: string]: any;
+  }>>([]);
   const [loading, setLoading] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<{
+    id: number;
+    username: string;
+    email: string;
+    isVerified: boolean;
+    status: 'pending' | 'approved' | 'rejected';
+    rejectionReason?: string;
+    Role?: { name: string };
+    createdAt: string;
+    attachment?: string;
+    [key: string]: any;
+  } | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -187,26 +209,34 @@ const RegistrationPanel: React.FC = () => {
   }, []);
 
   const total = users.length;
-  const verified = users.filter(u => u.isVerified).length;
-  const pending = total - verified;
+  const approved = users.filter(u => u.status === 'approved').length;
+  const pending = users.filter(u => u.status === 'pending').length;
+  const rejected = users.filter(u => u.status === 'rejected').length;
 
   return (
     <div className="p-4 space-y-6">
       
       {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded shadow border-l-4 border-blue-500">
           <h4 className="font-bold text-gray-700">Total Registrations</h4>
           <CiWallet className="text-gray-700 cursor-pointer" size={20}/>
-          <p className="text-2xl">{total}</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow border-l-4 border-green-500">
-          <h4 className="font-bold text-gray-700">Verified Users</h4>
-          <p className="text-2xl">{verified}</p>
+          <p className="text-3xl font-bold">{total}</p>
         </div>
         <div className="bg-white p-4 rounded shadow border-l-4 border-yellow-500">
-          <h4 className="font-bold text-gray-700">Pending Approvals</h4>
-          <p className="text-2xl">{pending}</p>
+          <h4 className="font-bold text-gray-700">Pending Approval</h4>
+          <FiAlertTriangle className="text-yellow-500" size={20}/>
+          <p className="text-3xl font-bold">{pending}</p>
+        </div>
+        <div className="bg-white p-4 rounded shadow border-l-4 border-green-500">
+          <h4 className="font-bold text-gray-700">Approved Users</h4>
+          <FiCheck className="text-green-500" size={20}/>
+          <p className="text-3xl font-bold">{approved}</p>
+        </div>
+        <div className="bg-white p-4 rounded shadow border-l-4 border-red-500">
+          <h4 className="font-bold text-gray-700">Rejected Users</h4>
+          <FiX className="text-red-500" size={20}/>
+          <p className="text-3xl font-bold">{rejected}</p>
         </div>
       </div>
 
@@ -251,9 +281,16 @@ const RegistrationPanel: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.Role?.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    user.isVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    user.status === 'approved' 
+                      ? 'bg-green-100 text-green-700' 
+                      : user.status === 'rejected'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {user.isVerified ? 'Verified' : 'Pending'}
+                    {user.status === 'approved' ? 'Approved' : user.status === 'rejected' ? 'Rejected' : 'Pending'}
+                    {user.status === 'rejected' && user.rejectionReason && (
+                      <span className="ml-1" title={user.rejectionReason}>ℹ️</span>
+                    )}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
@@ -408,9 +445,27 @@ const RegistrationPanel: React.FC = () => {
             <div className="flex justify-between items-center p-4 border-b bg-gray-50">
               <div className="flex items-center">
                 <h3 className="text-lg font-medium">User: {selectedUser.username}</h3>
-                <span className={`ml-3 px-2 py-1 rounded-full text-xs ${selectedUser.isVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                  {selectedUser.isVerified ? 'Verified' : 'Pending'}
+                <span 
+                  className={`ml-3 px-2 py-1 rounded-full text-xs ${
+                    selectedUser.status === 'approved' 
+                      ? 'bg-green-100 text-green-700' 
+                      : selectedUser.status === 'rejected'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}
+                >
+                  {selectedUser.status === 'approved' 
+                    ? 'Approved' 
+                    : selectedUser.status === 'rejected' 
+                      ? 'Rejected' 
+                      : 'Pending'}
                 </span>
+                {selectedUser.status === 'rejected' && selectedUser.rejectionReason && (
+                  <div className="ml-3 text-sm text-red-600">
+                    <span className="font-medium">Reason: </span>
+                    {selectedUser.rejectionReason}
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => setShowDetailsModal(false)}
@@ -455,7 +510,7 @@ const RegistrationPanel: React.FC = () => {
               </div>
               
               {/* Action buttons footer - only shown for pending users */}
-              {!selectedUser.isVerified && (
+              {selectedUser.status === 'pending' && (
                 <div className="mt-8 pt-4 border-t border-gray-200">
                   <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
                     <button

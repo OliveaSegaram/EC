@@ -21,28 +21,28 @@ const AssignedTasks = () => {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [filteredIssues, setFilteredIssues] = useState<Issue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [status, setStatus] = useState('In Progress');
   const [comment, setComment] = useState('');
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  
+  const [showModal, setShowModal] = useState(false);
+
   interface UpdateRequestData {
     comment: string;
     resolutionDetails?: string;
+    procurementDetails?: string;
   }
-
-  const [status, setStatus] = useState('');
 
   useEffect(() => {
     fetchAssignedIssues();
   }, []);
-  
+
   // Update filtered issues when issues or activeFilter changes
   useEffect(() => {
     console.log('Updating filtered issues. Active filter:', activeFilter);
     console.log('All issues:', issues.map(i => ({ id: i.id, status: i.status })));
-    
+
     let result = [...issues];
-    
+
     // Apply active filter if any
     if (activeFilter === 'Resolved' || activeFilter === 'Reopened') {
       // Show both Resolved and Reopened issues
@@ -51,7 +51,7 @@ const AssignedTasks = () => {
         const matches = 
           normalizedStatus.includes('resolved') || 
           normalizedStatus.includes('reopened');
-        
+
         console.log(`Issue ${issue.id} (${issue.status}): ${matches ? 'INCLUDED' : 'excluded'}`);
         return matches;
       });
@@ -62,7 +62,7 @@ const AssignedTasks = () => {
         const matches = 
           normalizedStatus.includes('assigned') || 
           normalizedStatus.includes('assigned to technician');
-          
+
         console.log(`Issue ${issue.id} (${issue.status}): ${matches ? 'INCLUDED' : 'excluded'}`);
         return matches;
       });
@@ -72,16 +72,16 @@ const AssignedTasks = () => {
         const normalizedStatus = issue.status.toLowerCase();
         const normalizedFilter = activeFilter.toLowerCase();
         const matches = normalizedStatus === normalizedFilter;
-        
+
         console.log(`Issue ${issue.id} (${issue.status}): ${matches ? 'INCLUDED' : 'excluded'}`);
         return matches;
       });
     }
-    
+
     console.log('Filtered result:', result.map(i => ({ id: i.id, status: i.status })));
     setFilteredIssues(result);
   }, [issues, activeFilter]);
-  
+
   // Count issues by status, normalizing status names
   const statusCounts = issues.reduce((acc, issue) => {
     let status = issue.status;
@@ -96,13 +96,13 @@ const AssignedTasks = () => {
     acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  
+
   // Calculate total completed (resolved + reopened)
   const totalCompleted = (statusCounts['Resolved'] || 0) + (statusCounts['Reopened'] || 0);
 
   const fetchAssignedIssues = useCallback(async () => {
     const toastId = toast.loading('Fetching your assigned tasks...');
-    
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -123,7 +123,7 @@ const AssignedTasks = () => {
           }
         });
         responseData = await response.json();
-        
+
         if (!response.ok) {
           throw new Error(responseData.message || 'Failed to fetch assigned tasks');
         }
@@ -138,12 +138,12 @@ const AssignedTasks = () => {
             'Pragma': 'no-cache'
           }
         });
-        
+
         if (!fallbackResponse.ok) {
           const errorData = await fallbackResponse.json();
           throw new Error(errorData.message || 'Failed to fetch assigned tasks');
         }
-        
+
         responseData = await fallbackResponse.json();
       }
 
@@ -153,16 +153,16 @@ const AssignedTasks = () => {
         status: i.status,
         description: i.description
       })));
-      
+
       setIssues(responseData.issues || []);
-      
+
       // Log status counts for debugging
       const statusCounts = (responseData.issues || []).reduce((acc: any, issue: any) => {
         acc[issue.status] = (acc[issue.status] || 0) + 1;
         return acc;
       }, {});
       console.log('Status counts:', statusCounts);
-      
+
       toast.update(toastId, {
         render: responseData.issues?.length 
           ? `Successfully loaded ${responseData.issues.length} tasks` 
@@ -171,10 +171,10 @@ const AssignedTasks = () => {
         isLoading: false,
         autoClose: 2000
       });
-      
+
     } catch (error: any) {
       console.error('Error fetching assigned tasks:', error);
-      
+
       let errorMessage = 'Failed to fetch assigned tasks';
       if (error?.response?.status === 401 || error?.response?.status === 403) {
         errorMessage = 'Session expired. Please log in again.';
@@ -183,7 +183,7 @@ const AssignedTasks = () => {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast.update(toastId, {
         render: errorMessage,
         type: 'error',
@@ -196,19 +196,22 @@ const AssignedTasks = () => {
 
   const handleOpenModal = (issue: Issue) => {
     setSelectedIssue(issue);
-    setComment(''); 
     setStatus(issue.status);
+    setComment(issue.comment || '');
     setShowModal(true);
   };
 
   const handleUpdateStatus = async () => {
     if (!selectedIssue) return;
+
     
     const toastId = toast.loading(`Updating status to ${status}...`);
 
     try {
       let endpoint = '';
-      let requestData: UpdateRequestData = { comment };
+      let requestData: UpdateRequestData = { 
+        comment: status === 'Procurement' ? `[Procurement Request] ${comment}` : comment
+      };
       let newStatus = status;
       
       // Determine which endpoint to use based on status
@@ -219,6 +222,9 @@ const AssignedTasks = () => {
         endpoint = `${backendUrl}/assignments/${selectedIssue.id}/resolve`;
         requestData = { ...requestData, resolutionDetails: comment };
         newStatus = 'Resolved';
+      } else if (status === 'Procurement') {
+        endpoint = `${backendUrl}/assignments/${selectedIssue.id}/procurement`;
+        newStatus = 'Procurement';
       } else {
         throw new Error('Invalid status');
       }
@@ -521,21 +527,32 @@ const AssignedTasks = () => {
                       rows={3}
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
-                      placeholder="Add your comment"
+                      placeholder={status === 'Procurement' 
+                        ? 'Enter procurement details (e.g., required parts, estimated cost, etc.)' 
+                        : 'Add your comment'}
                     />
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
+                      type="button"
                       className={`px-4 py-2 rounded-md border ${status === 'In Progress' ? 'bg-yellow-100 text-yellow-800 border-yellow-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
                       onClick={() => setStatus('In Progress')}
                     >
                       In Progress
                     </button>
                     <button
+                      type="button"
                       className={`px-4 py-2 rounded-md border ${status === 'Resolved' ? 'bg-green-100 text-green-800 border-green-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
                       onClick={() => setStatus('Resolved')}
                     >
                       Resolved
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-4 py-2 rounded-md border ${status === 'Procurement' ? 'bg-blue-100 text-blue-800 border-blue-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
+                      onClick={() => setStatus('Procurement')}
+                    >
+                      Procurement
                     </button>
                   </div>
                   <button
