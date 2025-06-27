@@ -1,16 +1,17 @@
-# Ignore node_modules folder
+# Dependencies
 node_modules/
+package-lock.json
 
-# Ignore environment files
+# Environment files
 .env
 
-# Ignore logs
+# Logs
 *.log
 
-# Ignore build output
+# Build output
 dist/
 build/
 
-# Ignore OS or editor-specific files
+# OS or editor-specific files
 .DS_Store
 .vscode/
