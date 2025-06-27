@@ -53,7 +53,6 @@ const IssuePanel: FC = (): ReactElement => {
 
   const fetchIssues = async () => {
     try {
-
       console.log('Fetching issues for root dashboard...');
       const token = localStorage.getItem('token');
       if (!token) {
@@ -61,10 +60,12 @@ const IssuePanel: FC = (): ReactElement => {
         return;
       }
 
-      const response = await axios.get(`${backendUrl}/issues`, {
+      // Add a timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      const response = await axios.get(`${backendUrl}/issues?t=${timestamp}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
         }
@@ -74,7 +75,12 @@ const IssuePanel: FC = (): ReactElement => {
 
       if (response.data && response.data.issues) {
         // The backend now filters for DC-approved issues for root users
-        setIssues(response.data.issues);
+        const newIssues = response.data.issues as Issue[];
+        setIssues(prevIssues => {
+          // Only update if the data has actually changed
+          const shouldUpdate = JSON.stringify(prevIssues) !== JSON.stringify(newIssues);
+          return shouldUpdate ? [...newIssues] : prevIssues;
+        });
       } else {
         console.warn('No issues array in response');
         setIssues([]);
@@ -85,14 +91,6 @@ const IssuePanel: FC = (): ReactElement => {
   };
 
   const handleApproveIssue = async (issue: Issue, comment: string = '') => {
-    // Optimistically update the UI
-    setIssues(prevIssues => 
-      prevIssues.map(item => 
-        item.id === issue.id 
-          ? { ...item, status: ISSUE_STATUS.SUPER_ADMIN_APPROVED, comment: comment || '' }
-          : item
-      )
-    );
     const toastId = toast.loading('Approving issue...');
     try {
       const token = localStorage.getItem('token');
@@ -107,7 +105,7 @@ const IssuePanel: FC = (): ReactElement => {
         return false;
       }
 
-      // Update local state immediately for better UX
+      // Optimistically update the UI
       setIssues(prevIssues => 
         prevIssues.map(item => 
           item.id === issue.id 
@@ -118,16 +116,21 @@ const IssuePanel: FC = (): ReactElement => {
 
       const response = await axios.post(
         `${backendUrl}/issues/${issue.id}/approve-root`,
-        { comment: comment || undefined },
+        { comment: comment || '' },
         {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          validateStatus: () => true // This ensures we handle all status codes
         }
       );
 
-      if (response.data.success) {
+      // Handle non-2xx responses
+      if (response.status >= 200 && response.status < 300) {
         // Clear the comment
         setApproveComment('');
         
@@ -141,31 +144,26 @@ const IssuePanel: FC = (): ReactElement => {
         setSelectedIssue(null);
         
         // Show success message
-        toast.success('Issue approved successfully', {
-          position: 'top-right',
-          autoClose: 4000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true
+        toast.update(toastId, {
+          render: response.data?.message || 'Issue approved successfully',
+          type: 'success',
+          isLoading: false,
+          autoClose: 3000,
+          closeButton: true
         });
         
-        // Refresh the issues list to ensure consistency
+        // Force a complete refresh of the issues list
         await fetchIssues();
         
+        // Trigger a refresh to ensure UI is in sync
+        triggerRefresh();
+        
         return true;
+      } else {
+        // Handle error response
+        const errorMessage = response.data?.message || 'Failed to approve issue';
+        throw new Error(errorMessage);
       }
-      
-      // If API call fails but we've already updated the UI, revert the local state
-      setIssues(prevIssues => 
-        prevIssues.map(item => 
-          item.id === issue.id 
-            ? { ...item, status: issue.status, comment: issue.comment || '' }
-            : item
-        )
-      );
-      
-      return false;
     } catch (error: any) {
       console.error('Error approving issue:', error);
       toast.error(error?.response?.data?.message || 'Error approving issue');
@@ -179,28 +177,28 @@ const IssuePanel: FC = (): ReactElement => {
     // Close the details modal and open approve modal
     setShowModal(false);
     setShowApproveModal(true);
-    
-    // Show info toast about the action
-    toast.info('Please confirm the approval', {
-      autoClose: 4000
-    });
   };
   
   // openRejectCommentModal is now defined below in the code
 
   const handleRejectIssue = async (issueId: number) => {
-    // Optimistically update the UI
     const issueToReject = issues.find(issue => issue.id === issueId);
-    if (issueToReject) {
-      setIssues(prevIssues => 
-        prevIssues.map(item => 
-          item.id === issueId 
-            ? { ...item, status: ISSUE_STATUS.SUPER_ADMIN_REJECTED, comment: rejectComment }
-            : item
-        )
-      );
+    if (!issueToReject) {
+      toast.error('Issue not found');
+      return false;
     }
+    
     const toastId = toast.loading('Rejecting issue...');
+    
+    // Optimistically update the UI
+    setIssues(prevIssues => 
+      prevIssues.map(item => 
+        item.id === issueId 
+          ? { ...item, status: ISSUE_STATUS.SUPER_ADMIN_REJECTED, comment: rejectComment }
+          : item
+      )
+    );
+    
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -225,60 +223,59 @@ const IssuePanel: FC = (): ReactElement => {
         return false;
       }
 
-      // Get the issue being rejected for state management
-      const issueToReject = issues.find(issue => issue.id === issueId);
-      if (!issueToReject) {
-        toast.update(toastId, {
-          render: 'Issue not found',
-          type: 'error',
-          isLoading: false,
-          autoClose: 4000
-        });
-        return false;
-      }
-
-      // Update local state immediately for better UX
-      setIssues(prevIssues => 
-        prevIssues.map(item => 
-          item.id === issueId 
-            ? { ...item, status: ISSUE_STATUS.SUPER_ADMIN_REJECTED, comment: rejectComment }
-            : item
-        )
-      );
-
-      // Send the comment with the rejection request
       const response = await axios.post(
         `${backendUrl}/issues/${issueId}/reject-root`,
-        { comment: rejectComment },
+        { 
+          comment: rejectComment,
+          reason: rejectComment
+        },
         {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          validateStatus: () => true
         }
       );
 
-      if (response.data.success) {
+      // Handle non-2xx responses
+      if (response.status >= 200 && response.status < 300) {
         // Clear form and close modals
         setRejectComment('');
         setShowCommentModal(false);
         setCommentIssue(null);
         
-        // Show success message
+        // Close any open modals
+        setShowModal(false);
+        setSelectedIssue(null);
+        
+        // Show success message with server response if available
         toast.update(toastId, {
-          render: 'Issue rejected successfully',
+          render: response.data?.message || 'Issue rejected successfully',
           type: 'success',
           isLoading: false,
           autoClose: 3000,
           closeButton: true
         });
         
-        // Trigger a refresh to ensure consistency
+        // Force a complete refresh of the issues list
+        await fetchIssues();
+        
+        // Trigger a refresh to ensure UI is in sync
         triggerRefresh();
         return true;
+      } else {
+        // Handle error response
+        const errorMessage = response.data?.message || 'Failed to reject issue';
+        throw new Error(errorMessage);
       }
+    } catch (error: any) {
+      console.error('Error rejecting issue:', error);
       
-      // If API call fails but we've already updated the UI, revert the local state
+      // Revert UI on error
       setIssues(prevIssues => 
         prevIssues.map(item => 
           item.id === issueId 
@@ -287,28 +284,16 @@ const IssuePanel: FC = (): ReactElement => {
         )
       );
       
-      return false;
-    } catch (error: any) {
-      console.error('Error rejecting issue:', error);
-      
-      // Revert UI on error
-      if (commentIssue) {
-        setIssues(prevIssues => 
-          prevIssues.map(item => 
-            item.id === commentIssue.id 
-              ? { ...commentIssue } // Revert to original issue data
-              : item
-          )
-        );
-      }
-      
+      // Show error message
       toast.update(toastId, {
-        render: error?.response?.data?.message || 'Error rejecting issue',
+        render: error?.message || 'Error rejecting issue',
         type: 'error',
         isLoading: false,
         autoClose: 4000,
         closeButton: true
       });
+      
+      return false;
     }
   };
 

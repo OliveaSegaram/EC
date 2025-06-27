@@ -239,8 +239,11 @@ const verifyRegistration = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     if (action === 'accept') {
-      user.isVerified = true;
-      await user.save();
+      // Update both isVerified and status fields
+      await user.update({ 
+        isVerified: true,
+        status: 'approved'
+      });
 
       await sendEmail({
         to: user.email,
@@ -253,8 +256,12 @@ const verifyRegistration = async (req, res) => {
 
       return res.send("User approved and notified");
     } else if (action === 'decline') {
-      user.isVerified = false;
-      await user.save();
+      // Update both isVerified and status fields
+      await user.update({ 
+        isVerified: false,
+        status: 'rejected',
+        rejectionReason: req.body.reason || 'Registration declined by administrator'
+      });
 
       await sendEmail({
         to: user.email,
@@ -262,6 +269,7 @@ const verifyRegistration = async (req, res) => {
         html: `
           <h3>Registration Declined</h3>
           <p>Hi ${user.username}, unfortunately your registration was declined.</p>
+          ${req.body.reason ? `<p>Reason: ${req.body.reason}</p>` : ''}
         `
       });
 

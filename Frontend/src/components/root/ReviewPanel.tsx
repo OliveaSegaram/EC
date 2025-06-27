@@ -203,12 +203,18 @@ const ReviewPanel: React.FC = () => {
     
     if (statusFilter === 'completed') {
       filtered = filtered.filter(issue => 
-        issue.status === 'Resolved' || 
+        issue.status === 'Completed' || 
+        issue.status === 'COMPLETED' ||
         issue.status === 'SUPER_ADMIN_APPROVED' ||
         issue.status === 'SUPER_ADMIN_REJECTED'
       );
     } else if (statusFilter === 'resolved') {
-      filtered = filtered.filter(issue => issue.status === 'Resolved');
+      filtered = filtered.filter(issue => 
+        issue.status === 'Resolved' || 
+        issue.status === 'RESOLVED' ||
+        issue.status === 'Resolved_By_Technical_Officer' ||
+        issue.status === 'RESOLVED_BY_TECHNICAL_OFFICER'
+      );
     }
     
     setFilteredIssues(filtered);
