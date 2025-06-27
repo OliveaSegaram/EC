@@ -48,18 +48,19 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
     return getPriorityValue(a.priorityLevel) - getPriorityValue(b.priorityLevel);
   });
 
-  // Filter issues by status
-  const pendingIssues = issues.filter(issue => issue.status === ISSUE_STATUS.PENDING);
-  // These variables are filtered but not used in the component
-  // const inProgressIssues = issues.filter(issue => 
-  //   issue.status === ISSUE_STATUS.IN_PROGRESS || 
-  //   issue.status === ISSUE_STATUS.ASSIGNED
-  // );
-  // const resolvedIssues = issues.filter(issue => issue.status === ISSUE_STATUS.RESOLVED);
-  const rejectedIssues = issues.filter(issue => issue.status === ISSUE_STATUS.DC_REJECTED);
+  // Filter and sort issues by status and priority
+  const pendingIssues = sortedIssues.filter(issue => issue.status === ISSUE_STATUS.PENDING);
+  const rejectedIssues = sortedIssues.filter(issue => 
+    issue.status === ISSUE_STATUS.DC_REJECTED || 
+    issue.status === 'Rejected' ||
+    issue.status.toLowerCase().includes('reject')
+  );
+  
+  // Get total count of all issues
+  const totalIssues = sortedIssues.length;
 
   return (
-    <div>
+    <div className="pt-6">
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Total Issues Card */}
@@ -69,7 +70,7 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Total Issues</h3>
-            <p className="text-2xl font-bold text-gray-800">{issues.length}</p>
+            <p className="text-2xl font-bold text-gray-800">{totalIssues}</p>
             <p className="text-xs text-gray-400 mt-1">All reported issues</p>
           </div>
         </div>
@@ -98,45 +99,44 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
           </div>
         </div>
       </div>
-      {/* Recent Issues */}
+      {/* Recent Pending Issues */}
       <div className="mt-8">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-gray-800">Recent Issues</h3>
+          <h3 className="text-xl font-semibold text-gray-800">Pending Issues</h3>
           <div className="flex space-x-2">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              <FiAlertTriangle className="mr-1" /> High Priority: {issues.filter(i => i.priorityLevel === 'High').length}
+              <FiAlertTriangle className="mr-1" /> High Priority: {pendingIssues.filter(i => i.priorityLevel === 'High').length}
             </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-              <FiClock className="mr-1" /> Pending: {pendingIssues.length}
-            </span>
+            
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr className="hover:bg-gray-50">
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
-                  Issue ID
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
-                  Type
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
-                  Status
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
-                  Priority
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
-                  Submitted
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedIssues.slice(0, 5).map((issue) => (
+        {pendingIssues.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr className="hover:bg-gray-50">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
+                    Issue ID
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
+                    Type
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
+                    Status
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
+                    Priority
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
+                    Submitted
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-normal">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {pendingIssues.slice(0, 5).map((issue) => (
                 <tr key={issue.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     #{issue.id}
@@ -178,10 +178,15 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
                     </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 text-center">
+            <p className="text-gray-500">No pending issues found</p>
+          </div>
+        )}
       </div>
     </div>
   );

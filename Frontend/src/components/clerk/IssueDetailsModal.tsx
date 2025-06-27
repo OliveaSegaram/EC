@@ -183,24 +183,31 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Status History & Comments</h4>
                 <div className="space-y-4">
                   {issue.comment.split('\n\n').map((commentBlock, index) => {
-                    // Extract timestamp and user info if available
-                    const timestampMatch = commentBlock.match(/at (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/);
-                    const timestamp = timestampMatch ? new Date(timestampMatch[1]) : null;
-                    const commentText = timestamp ? commentBlock.replace(/\s*\(.*\) at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, '') : commentBlock;
+                    // Extract timestamp if it exists at the end of the comment
+                    let displayText = commentBlock;
+                    let timestamp = null;
+                    
+                    // Match the timestamp at the end of the comment
+                    const timestampMatch = commentBlock.match(/(.*?)(?:\s+at\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z))?$/);
+                    
+                    if (timestampMatch && timestampMatch[2]) {
+                      displayText = timestampMatch[1].trim();
+                      timestamp = new Date(timestampMatch[2]);
+                    }
                     
                     // Check if this is a status update
-                    const isStatusUpdate = commentText.includes('Status changed to') || 
-                                         commentText.includes('Approved by') || 
-                                         commentText.includes('Rejected by') ||
-                                         commentText.includes('Assigned to');
+                    const isStatusUpdate = displayText.includes('Status changed to') || 
+                                         displayText.includes('Approved by') || 
+                                         displayText.includes('Rejected by') ||
+                                         displayText.includes('Assigned to');
                     
                     // Check if this is a rejection
-                    const isRejection = commentText.includes('Rejected by') || 
-                                      commentText.includes('rejection') ||
-                                      commentText.toLowerCase().includes('reject');
+                    const isRejection = displayText.includes('Rejected by') || 
+                                      displayText.includes('rejection') ||
+                                      displayText.toLowerCase().includes('reject');
                     
-                    const isApproval = commentText.includes('Approved by');
-                    const isAssignment = commentText.includes('Assigned to');
+                    const isApproval = displayText.includes('Approved by');
+                    const isAssignment = displayText.includes('Assigned to');
                     
                     return (
                       <div 
@@ -226,20 +233,22 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
                             )}
                           </div>
                           <div className="ml-3 flex-1">
-                            <p className="text-sm text-gray-800">
-                              {commentText}
-                            </p>
-                            {timestamp && (
-                              <p className="mt-1 text-xs text-gray-500">
-                                {timestamp.toLocaleString('en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
+                            <div className="flex flex-col">
+                              <p className="text-sm text-gray-800 whitespace-pre-line">
+                                {displayText}
                               </p>
-                            )}
+                              {timestamp && (
+                                <span className="text-xs text-gray-500 mt-1 self-end">
+                                  {timestamp.toLocaleString('en-US', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -261,7 +270,7 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
                     await onReopen(issue.id);
                     toast.success('Issue has been reopened successfully');
                   } catch (error) {
-                    toast.error('Failed to reopen issue. Please try again.');
+                    // Error toast is handled in the parent component
                     console.error('Error reopening issue:', error);
                   }
                 }}

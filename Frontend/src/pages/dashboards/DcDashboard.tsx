@@ -4,8 +4,7 @@ import { FiHome, FiAlertCircle, FiLogOut, FiBell, FiMapPin } from 'react-icons/f
 import axios from 'axios';
 import { AppContext } from '../../provider/AppContext';
 import userAvatar from '../../assets/icons/login/User.svg';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 // Import components
@@ -61,18 +60,10 @@ const DCDashboard = () => {
 
   // Fetch user profile and set up the component
   const fetchUserProfile = useCallback(async () => {
-    const toastId = toast.loading('Loading user profile...');
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('No token found');
-        toast.update(toastId, {
-          render: 'Session expired. Please log in again.',
-          type: 'error',
-          isLoading: false,
-          autoClose: 3000,
-          closeButton: true
-        });
+        console.error('No token found, redirecting to login');
         navigate('/login');
         return;
       }
@@ -98,42 +89,16 @@ const DCDashboard = () => {
           } else if (userData.districtId) {
             setUserDistrictId(userData.districtId);
           }
+      } else {
+        console.error('No username found in response');
+      }
         } else if (userData.districtId) {
           setUserDistrictId(userData.districtId);
         }
 
         console.log('Username set to:', userData.username);
-        toast.update(toastId, {
-          render: 'Profile loaded successfully',
-          type: 'success',
-          isLoading: false,
-          autoClose: 2000,
-          closeButton: true
-        });
-      } else {
-        console.error('No username found in response');
-        toast.update(toastId, {
-          render: 'Error: Invalid user data received',
-          type: 'error',
-          isLoading: false,
-          autoClose: 3000,
-          closeButton: true
-        });
-      }
     } catch (error) {
       console.error('Error fetching user profile:', error);
-      const errorMessage = axios.isAxiosError(error)
-        ? (error.response?.data?.message || 'Failed to fetch profile')
-        : 'An unexpected error occurred';
-
-      toast.update(toastId, {
-        render: `Error: ${errorMessage}`,
-        type: 'error',
-        isLoading: false,
-        autoClose: 5000,
-        closeButton: true
-      });
-
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         navigate('/login');
       }
@@ -141,22 +106,15 @@ const DCDashboard = () => {
   }, [navigate]);
 
   // Fetch issues with proper error handling and loading states
-  const fetchIssues = useCallback(async () => {
+  const fetchIssues = useCallback(async (showSuccess = false) => {
     if (!userDistrictId) return;
 
-    const toastId = toast.loading('Fetching issues...');
     try {
       console.log('Fetching issues...');
       const token = localStorage.getItem('token');
       if (!token) {
         console.error('No token found, redirecting to login');
-        toast.update(toastId, {
-          render: 'Session expired. Please log in again.',
-          type: 'error',
-          isLoading: false,
-          autoClose: 3000,
-          closeButton: true
-        });
+        toast.error('Session expired. Please log in again.');
         navigate('/login');
         return;
       }
@@ -198,35 +156,17 @@ const DCDashboard = () => {
 
           console.log('Setting normalized issues:', normalizedIssues);
           setIssues(normalizedIssues);
-
-          toast.update(toastId, {
-            render: 'Issues loaded successfully',
-            type: 'success',
-            isLoading: false,
-            autoClose: 2000,
-            closeButton: true
-          });
+          
+          if (showSuccess && normalizedIssues.length > 0) {
+            toast.success(`Loaded ${normalizedIssues.length} issues`);
+          }
         } else {
           console.warn('No issues array in response');
           setIssues([]);
-          toast.update(toastId, {
-            render: 'No issues found',
-            type: 'info',
-            isLoading: false,
-            autoClose: 2000,
-            closeButton: true
-          });
         }
       } else {
         console.warn('No data in response');
         setIssues([]);
-        toast.update(toastId, {
-          render: 'No data received from server',
-          type: 'warning',
-          isLoading: false,
-          autoClose: 3000,
-          closeButton: true
-        });
       }
     } catch (error) {
       console.error('Error fetching issues:', error);
@@ -264,20 +204,15 @@ const DCDashboard = () => {
       }
 
       console.error('Error details:', errorMessage);
-      toast.update(toastId, {
-        render: `Error: ${errorMessage}`,
-        type: 'error',
-        isLoading: false,
-        autoClose: 5000,
-        closeButton: true
-      });
-
+      
       if (shouldLogout) {
         // Clear any existing auth data
         localStorage.removeItem('token');
         localStorage.removeItem('userRole');
         // Redirect to login after a short delay
         setTimeout(() => navigate('/login'), 2000);
+      } else {
+        toast.error(errorMessage);
       }
     }
   }, [userDistrictId, navigate]);
@@ -290,12 +225,11 @@ const DCDashboard = () => {
   // Fetch issues when district ID changes
   useEffect(() => {
     if (userDistrictId) {
-      fetchIssues();
+      fetchIssues(true); // Show success toast only on initial load
     }
-  }, [userDistrictId, fetchIssues]);
+  }, [userDistrictId]);
 
   const handleApproveIssue = useCallback(async (issueId: number) => {
-    const toastId = toast.loading('Approving issue...');
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -323,29 +257,17 @@ const DCDashboard = () => {
         )
       );
       
-      toast.update(toastId, {
-        render: 'Issue approved successfully',
-        type: 'success',
-        isLoading: false,
-        autoClose: 3000,
-        closeButton: true
-      });
+      toast.success('Issue approved successfully');
       
-      // Refresh issues to get the latest data
-      await fetchIssues();
+      // Refresh issues to get the latest data without showing success toast
+      await fetchIssues(false);
     } catch (error) {
       console.error('Error approving issue:', error);
       const errorMessage = axios.isAxiosError(error)
         ? (error.response?.data?.message || 'Failed to approve issue')
         : 'An unexpected error occurred';
 
-      toast.update(toastId, {
-        render: `Error: ${errorMessage}`,
-        type: 'error',
-        isLoading: false,
-        autoClose: 3000,
-        closeButton: true
-      });
+      toast.error(errorMessage);
 
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         navigate('/login');
@@ -384,8 +306,8 @@ const DCDashboard = () => {
       setCommentIssue(null);
       toast.success('Issue rejected successfully');
       
-      // Refresh issues to get the latest data
-      await fetchIssues();
+      // Refresh issues to get the latest data without showing success toast
+      await fetchIssues(false);
     } catch (error) {
       console.error('Error rejecting issue:', error);
       toast.error('Failed to reject issue');
@@ -443,21 +365,10 @@ const DCDashboard = () => {
     }
   };
 
-  // Toast container configuration
-  const toastConfig = {
-    position: "top-right" as const,
-    autoClose: 5000,
-    hideProgressBar: false,
-    closeOnClick: true,
-    pauseOnHover: true,
-    draggable: true,
-    progress: undefined,
-    theme: "light" as const,
-  };
+
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <ToastContainer {...toastConfig} />
       {/* Sidebar */}
       <aside className="w-56 bg-white border-r shadow-lg fixed left-0 top-0 bottom-0 flex flex-col">
         {/* Sidebar Header */}
@@ -539,10 +450,10 @@ const DCDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 ml-56 pt-20 px-4">
+      <main className="flex-1 ml-56 pt-24 px-4">
         {activeTab === 'overview' && (
           <OverviewPanel 
-            issues={issues.filter(issue => issue.status.toLowerCase() === 'pending')}
+            issues={issues}
             handleApproveIssue={handleApproveIssue}
             openRejectCommentModal={openRejectCommentModal}
             showComment={showComment}
@@ -555,10 +466,19 @@ const DCDashboard = () => {
         
         {activeTab === 'issues' && (
           <>
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-blue-800">
-                <span className="font-semibold">Note:</span> You are viewing issues from {userDistrict} district only.
-              </p>
+            <div className="mb-6 p-5 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h2a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-blue-700">
+                    <span className="font-semibold">Note:</span> You are viewing issues from {userDistrict} district only.
+                  </p>
+                </div>
+              </div>
             </div>
             <IssueTable 
               issues={issues}

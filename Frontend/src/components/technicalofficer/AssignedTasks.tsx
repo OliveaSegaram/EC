@@ -2,6 +2,8 @@ import { useEffect, useState, useContext, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { FiEdit } from 'react-icons/fi';
 import { AppContext } from '../../provider/AppContext';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
+import axios from 'axios';
 
 interface Issue {
   id: number;
@@ -21,20 +23,49 @@ const AssignedTasks = () => {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [filteredIssues, setFilteredIssues] = useState<Issue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
-  const [status, setStatus] = useState('In Progress');
+  type StatusType = typeof ISSUE_STATUS.IN_PROGRESS | typeof ISSUE_STATUS.RESOLVED | typeof ISSUE_STATUS.ADD_TO_PROCUREMENT | 'Procurement' | 'Add to Procurement';
+  const [status, setStatus] = useState<StatusType>(ISSUE_STATUS.IN_PROGRESS);
   const [comment, setComment] = useState('');
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [districts, setDistricts] = useState<Record<string, string>>({});
 
   interface UpdateRequestData {
     comment: string;
     resolutionDetails?: string;
     procurementDetails?: string;
+    status?: string;
   }
 
   useEffect(() => {
     fetchAssignedIssues();
+    fetchDistricts();
   }, []);
+
+  const fetchDistricts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await axios.get(`${backendUrl}/districts`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.data && Array.isArray(response.data)) {
+        const districtsMap = response.data.reduce((acc: Record<string, string>, district: any) => {
+          acc[district.id] = district.name;
+          return acc;
+        }, {});
+        setDistricts(districtsMap);
+      }
+    } catch (error) {
+      console.error('Error fetching districts:', error);
+    }
+  };
+
+  const getDistrictName = (locationId: string) => {
+    return districts[locationId] || locationId; // Return district name or fallback to ID if not found
+  };
 
   // Update filtered issues when issues or activeFilter changes
   useEffect(() => {
@@ -89,7 +120,7 @@ const AssignedTasks = () => {
     if (status.includes('Assigned') || status.includes('assigned')) {
       status = 'Assigned to Technician';
     } else if (status === 'Completed' || status === 'Resolved') {
-      status = 'Resolved'; // Combine Completed into Resolved
+      status = 'Resolved'; 
     } else if (status === 'Reopened') {
       status = 'Reopened';
     }
@@ -101,8 +132,6 @@ const AssignedTasks = () => {
   const totalCompleted = (statusCounts['Resolved'] || 0) + (statusCounts['Reopened'] || 0);
 
   const fetchAssignedIssues = useCallback(async () => {
-    const toastId = toast.loading('Fetching your assigned tasks...');
-
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -147,30 +176,11 @@ const AssignedTasks = () => {
         responseData = await fallbackResponse.json();
       }
 
-      console.log('Raw API response:', responseData);
-      console.log('Issues with statuses:', responseData.issues?.map((i: any) => ({
-        id: i.id,
-        status: i.status,
-        description: i.description
-      })));
-
       setIssues(responseData.issues || []);
 
-      // Log status counts for debugging
-      const statusCounts = (responseData.issues || []).reduce((acc: any, issue: any) => {
-        acc[issue.status] = (acc[issue.status] || 0) + 1;
-        return acc;
-      }, {});
-      console.log('Status counts:', statusCounts);
-
-      toast.update(toastId, {
-        render: responseData.issues?.length 
-          ? `Successfully loaded ${responseData.issues.length} tasks` 
-          : 'No tasks assigned to you',
-        type: 'success',
-        isLoading: false,
-        autoClose: 2000
-      });
+      if (responseData.issues?.length === 0) {
+        toast.info('No tasks assigned to you');
+      }
 
     } catch (error: any) {
       console.error('Error fetching assigned tasks:', error);
@@ -184,28 +194,23 @@ const AssignedTasks = () => {
         errorMessage = error.message;
       }
 
-      toast.update(toastId, {
-        render: errorMessage,
-        type: 'error',
-        isLoading: false,
-        autoClose: 5000,
-        closeButton: true,
-      });
+      toast.error(errorMessage, { autoClose: 5000 });
     }
   }, [backendUrl]);
 
   const handleOpenModal = (issue: Issue) => {
     setSelectedIssue(issue);
-    setStatus(issue.status);
-    setComment(issue.comment || '');
+    // Ensure the status is one of the allowed values
+    const issueStatus = issue.status as StatusType;
+    setStatus(issueStatus);
+    setComment(''); // Clear the comment field when opening the modal
     setShowModal(true);
   };
 
   const handleUpdateStatus = async () => {
     if (!selectedIssue) return;
 
-    
-    const toastId = toast.loading(`Updating status to ${status}...`);
+    const toastId = toast.loading(`Updating status...`);
 
     try {
       let endpoint = '';
@@ -215,22 +220,20 @@ const AssignedTasks = () => {
       let newStatus = status;
       
       // Determine which endpoint to use based on status
-      if (status === 'In Progress') {
+      if (status === ISSUE_STATUS.IN_PROGRESS) {
         endpoint = `${backendUrl}/assignments/${selectedIssue.id}/start`;
-        newStatus = 'In Progress';
-      } else if (status === 'Resolved') {
+        newStatus = ISSUE_STATUS.IN_PROGRESS;
+      } else if (status === ISSUE_STATUS.RESOLVED) {
         endpoint = `${backendUrl}/assignments/${selectedIssue.id}/resolve`;
         requestData = { ...requestData, resolutionDetails: comment };
-        newStatus = 'Resolved';
-      } else if (status === 'Procurement') {
-        endpoint = `${backendUrl}/assignments/${selectedIssue.id}/procurement`;
-        newStatus = 'Procurement';
+        newStatus = ISSUE_STATUS.RESOLVED;
+      } else if (status === 'Procurement' || status === 'Add to Procurement' || status === ISSUE_STATUS.ADD_TO_PROCUREMENT) {
+        endpoint = `${backendUrl}/updates/${selectedIssue.id}/update`;
+        requestData = { ...requestData, status: ISSUE_STATUS.ADD_TO_PROCUREMENT };
+        newStatus = ISSUE_STATUS.ADD_TO_PROCUREMENT;
       } else {
         throw new Error('Invalid status');
       }
-
-      console.log('Sending request to:', endpoint);
-      console.log('Request data:', requestData);
 
       const token = localStorage.getItem('token');
       if (!token) {
@@ -257,7 +260,6 @@ const AssignedTasks = () => {
       });
 
       const responseData = await response.json();
-      console.log('Update response:', responseData);
       
       if (!response.ok) {
         // Revert local state if the server update fails
@@ -271,14 +273,7 @@ const AssignedTasks = () => {
         throw new Error(responseData.message || 'Failed to update status');
       }
 
-      // Show success message
-      toast.update(toastId, {
-        render: responseData.message || 'Status updated successfully',
-        type: 'success',
-        isLoading: false,
-        autoClose: 3000,
-        closeButton: true,
-      });
+      toast.success('Status updated successfully', { autoClose: 2000 });
       
       // Close the modal and refresh the list to ensure we have the latest data
       setShowModal(false);
@@ -296,27 +291,14 @@ const AssignedTasks = () => {
         errorMessage = error.message;
       }
       
-      toast.update(toastId, {
-        render: errorMessage,
-        type: 'error',
-        isLoading: false,
-        autoClose: 5000,
-        closeButton: true,
-      });
+      toast.error(errorMessage, { autoClose: 5000 });
+    } finally {
+      toast.dismiss(toastId);
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Issue assigned by Super User':
-        return 'bg-purple-100 text-purple-800';
-      case 'In Progress':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Resolved':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+    return ISSUE_STATUS.getStatusColor(status);
   };
 
   return (
@@ -453,7 +435,9 @@ const AssignedTasks = () => {
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
                     <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(issue.status)}`}>{issue.status}</span>
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{issue.location}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {getDistrictName(issue.location)}
+                  </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
                     <button
                       onClick={() => handleOpenModal(issue)}
@@ -527,7 +511,7 @@ const AssignedTasks = () => {
                       rows={3}
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
-                      placeholder={status === 'Procurement' 
+                      placeholder={status === 'Procurement' || status === 'Add to Procurement' || status === ISSUE_STATUS.ADD_TO_PROCUREMENT
                         ? 'Enter procurement details (e.g., required parts, estimated cost, etc.)' 
                         : 'Add your comment'}
                     />
@@ -535,24 +519,24 @@ const AssignedTasks = () => {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className={`px-4 py-2 rounded-md border ${status === 'In Progress' ? 'bg-yellow-100 text-yellow-800 border-yellow-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
-                      onClick={() => setStatus('In Progress')}
+                      className={`px-4 py-2 rounded-md border ${status === ISSUE_STATUS.IN_PROGRESS ? 'bg-yellow-100 text-yellow-800 border-yellow-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
+                      onClick={() => setStatus(ISSUE_STATUS.IN_PROGRESS)}
                     >
-                      In Progress
+                      {ISSUE_STATUS.getDisplayName(ISSUE_STATUS.IN_PROGRESS)}
                     </button>
                     <button
                       type="button"
-                      className={`px-4 py-2 rounded-md border ${status === 'Resolved' ? 'bg-green-100 text-green-800 border-green-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
-                      onClick={() => setStatus('Resolved')}
+                      className={`px-4 py-2 rounded-md border ${status === ISSUE_STATUS.RESOLVED ? 'bg-green-100 text-green-800 border-green-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
+                      onClick={() => setStatus(ISSUE_STATUS.RESOLVED)}
                     >
-                      Resolved
+                      {ISSUE_STATUS.getDisplayName(ISSUE_STATUS.RESOLVED)}
                     </button>
                     <button
                       type="button"
-                      className={`px-4 py-2 rounded-md border ${status === 'Procurement' ? 'bg-blue-100 text-blue-800 border-blue-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
-                      onClick={() => setStatus('Procurement')}
+                      className={`px-4 py-2 rounded-md border ${status === ISSUE_STATUS.ADD_TO_PROCUREMENT || status === 'Procurement' || status === 'Add to Procurement' ? 'bg-indigo-100 text-indigo-800 border-indigo-400' : 'bg-gray-100 text-gray-800 border-gray-300'}`}
+                      onClick={() => setStatus(ISSUE_STATUS.ADD_TO_PROCUREMENT)}
                     >
-                      Procurement
+                      {ISSUE_STATUS.getDisplayName(ISSUE_STATUS.ADD_TO_PROCUREMENT)}
                     </button>
                   </div>
                   <button

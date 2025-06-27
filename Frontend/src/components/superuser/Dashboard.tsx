@@ -5,7 +5,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
 import { AppContext } from '../../provider/AppContext';
-import ReportGenerator from './ReportGenerator';
+import ReportGenerator from '../ReportGenerator/ReportGenerator';
 
 interface TechnicalOfficer {
   id: number;
@@ -133,13 +133,15 @@ const Dashboard = () => {
 
       // Filter issues to show in the dashboard
       const filteredIssues = response.data.issues.filter((issue: Issue) => {
-        // For computer repair issues, show if status is 'under procurement' or 'super admin approved' but not 'resolved'
+        // For computer repair issues, show if status is 'under procurement', 'add to procurement' or 'super admin approved' but not 'resolved'
         if (issue.complaintType === 'Computer Repair') {
           return issue.status === 'Under Procurement' || 
+                 issue.status === ISSUE_STATUS.ADD_TO_PROCUREMENT ||
                  issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED;
         }
-        // For other issue types, show only super admin approved
-        return issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED;
+        // For other issue types, show only super admin approved or add to procurement
+        return issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED || 
+               issue.status === ISSUE_STATUS.ADD_TO_PROCUREMENT;
       });
       
       setIssues(filteredIssues);
@@ -153,6 +155,7 @@ const Dashboard = () => {
         ).length,
         underProcurementIssues: allIssues.filter((issue: Issue) => 
           issue.status === 'Under Procurement' || 
+          issue.status === ISSUE_STATUS.ADD_TO_PROCUREMENT ||
           (issue.complaintType === 'Computer Repair' && issue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED)
         ).length,
       });
@@ -192,25 +195,38 @@ const Dashboard = () => {
   const handleAssignIssue = async (issueId: number) => {
     if (!selectedOfficer || isAssigning) return;
     
+    console.log('Starting assignment for issue:', issueId, 'to officer:', selectedOfficer);
     setIsAssigning(true);
     
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('No authentication token found');
-        setIsAssigning(false);
+        const error = new Error('No authentication token found');
+        console.error(error);
+        toast.error('Authentication error. Please log in again.');
         return;
       }
 
+      console.log('Making API call to assign technician...');
       const response = await axios.post(
         `${backendUrl}/issues/${issueId}/assign-technician`,
         { technicalOfficerId: selectedOfficer.id },
         {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
       );
 
-      if (response.data.success) {
+      console.log('API Response:', response);
+
+      // Check if the response indicates success (handling different response formats)
+      const isSuccess = response.data && (response.data.success === true || response.data.message?.includes('assigned'));
+      
+      if (isSuccess) {
+        console.log('Assignment successful, updating UI...');
+        
         // Update the issue in the local state
         setIssues(prevIssues => 
           prevIssues.map(issue => 
@@ -224,13 +240,38 @@ const Dashboard = () => {
           )
         );
         
-        // Close the modal and reset selection
-        setShowViewModal(false);
-        setSelectedOfficer(null);
+        // Show success message
+        toast.success('Issue assigned successfully');
+        
+        // Close the modal and reset states after a short delay
+        setTimeout(() => {
+          setShowViewModal(false);
+          setSelectedOfficer(null);
+          setShowOfficerDropdown(false);
+        }, 500);
+      } else {
+        const errorMessage = response.data?.message || 'Failed to assign issue';
+        console.error('Assignment failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: response.data
+        });
+        throw new Error(errorMessage);
       }
-    } catch (error) {
-      console.error('Error assigning issue:', error);
-      alert('Failed to assign issue. Please try again.');
+    } catch (error: any) {
+      console.error('Error in handleAssignIssue:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        stack: error.stack
+      });
+      
+      const errorMessage = error.response?.data?.message || 
+                         error.message || 
+                         'Failed to assign issue. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setIsAssigning(false);
     }
   };
   
@@ -301,21 +342,27 @@ const Dashboard = () => {
         toast.success('Status updated successfully');
       } else {
         throw new Error('Failed to update status');
-      }
-    } catch (error: any) {
-      console.error(`Error updating status to ${status}:`, error);
-      toast.error(error.response?.data?.message || `Failed to update status to ${status}`);
-    } finally {
-      setIsUpdatingStatus(false);
     }
+  } catch (error: any) {
+    console.error(`Error updating status to ${status}:`, error);
+    toast.error(error.response?.data?.message || `Failed to update status to ${status}`);
+  } finally {
+    setIsUpdatingStatus(false);
+  }
+};
+
+  const isComputerRepairUnderWarranty = (issue: Issue): boolean => {
+    return issue.complaintType === 'Computer Repair' && issue.underWarranty === true;
   };
 
-  const isComputerRepairUnderWarranty = (issue: Issue) => {
-    return issue.complaintType === 'Computer Repair' && issue.underWarranty;
+  const isAddToProcurement = (issue: Issue): boolean => {
+    return issue.status === 'Add to Procurement' || 
+           issue.status === 'Add_To_Procurement' ||
+           issue.status === 'Under Procurement';
   };
 
   const shouldShowTechnicianAssignment = (issue: Issue) => {
-    return !isComputerRepairUnderWarranty(issue);
+    return !isComputerRepairUnderWarranty(issue) && !isAddToProcurement(issue);
   };
 
   const getStatusColor = (status: string) => {
@@ -567,52 +614,65 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Comment Section for Computer Repair Under Warranty */}
-              {selectedIssue && isComputerRepairUnderWarranty(selectedIssue) && (
+              {/* Combined Section for Warranty and Procurement */}
+              {(selectedIssue && (isAddToProcurement(selectedIssue) || isComputerRepairUnderWarranty(selectedIssue))) && (
                 <>
                   <div className="mt-6 pt-6 border-t border-gray-200">
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">Warranty Information</h4>
+                    <h4 className="text-lg font-medium text-gray-900 mb-4">
+                      {isComputerRepairUnderWarranty(selectedIssue) ? 'Warranty Information' : 'Procurement Information'}
+                    </h4>
                     
                     <div className="mb-4">
-                      <label htmlFor="warranty-comment" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="issue-comment" className="block text-sm font-medium text-gray-700 mb-2">
                         Add Notes (optional)
                       </label>
                       <textarea
-                        id="warranty-comment"
+                        id="issue-comment"
                         rows={3}
                         className="shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border border-gray-300 rounded-md p-2"
-                        placeholder="Enter any notes or instructions..."
+                        placeholder={isComputerRepairUnderWarranty(selectedIssue) 
+                          ? "Enter any notes or instructions..." 
+                          : "Enter any notes or instructions for procurement..."}
                         value={currentComment}
                         onChange={(e) => setCurrentComment(e.target.value)}
                         disabled={isUpdatingStatus}
                       />
                     </div>
-                  </div>
-                  
-                  <div className="mt-4 p-3 bg-blue-50 rounded-md">
-                    <p className="text-sm text-blue-700">
-                      <span className="font-medium">Note:</span> This is a computer repair under warranty. No technician assignment is needed.
-                    </p>
-                  </div>
 
-                  {/* Action Buttons for Warranty Issues */}
-                  <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateStatus('Under Procurement', currentComment)}
-                      disabled={isUpdatingStatus}
-                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isUpdatingStatus ? 'Updating...' : 'Under Procurement'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateStatus('Completed', currentComment)}
-                      disabled={isUpdatingStatus}
-                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isUpdatingStatus ? 'Updating...' : 'Mark as Completed'}
-                    </button>
+                    <div className={`mt-4 p-3 rounded-md ${isComputerRepairUnderWarranty(selectedIssue) ? 'bg-blue-50' : 'bg-yellow-50'}`}>
+                      <p className={`text-sm ${isComputerRepairUnderWarranty(selectedIssue) ? 'text-blue-700' : 'text-yellow-700'}`}>
+                        <span className="font-medium">Note:</span> {
+                          isComputerRepairUnderWarranty(selectedIssue)
+                            ? "This is a computer repair under warranty. No technician assignment is needed."
+                            : "This item has been marked for procurement. Please review the details and take necessary action."
+                        }
+                      </p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end space-x-3">
+                      {((selectedIssue.status === 'Add to Procurement' || 
+                         selectedIssue.status === 'Add_To_Procurement' ||
+                         isComputerRepairUnderWarranty(selectedIssue)) && 
+                         selectedIssue.status !== 'Under Procurement') && (
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateStatus('Under Procurement', currentComment)}
+                          disabled={isUpdatingStatus}
+                          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isUpdatingStatus ? 'Updating...' : 'Under Procurement'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus('Completed', currentComment)}
+                        disabled={isUpdatingStatus}
+                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isUpdatingStatus ? 'Updating...' : 'Mark as Completed'}
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -673,13 +733,21 @@ const Dashboard = () => {
                       type="button"
                       onClick={() => handleAssignIssue(selectedIssue.id)}
                       disabled={!selectedOfficer || isAssigning}
-                      className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${
+                      className={`inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${
                         !selectedOfficer || isAssigning 
-                          ? 'bg-gray-300 cursor-not-allowed' 
+                          ? 'bg-gray-400 cursor-not-allowed' 
                           : 'bg-gradient-to-r from-purple-700 to-purple-900 hover:from-purple-800 hover:to-purple-900'
                       }`}
                     >
-                      {isAssigning ? 'Assigning...' : `Assign to ${selectedOfficer ? selectedOfficer.username.split(' ')[0] : 'Technician'}`}
+                      {isAssigning ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Assigning...
+                        </>
+                      ) : `Assign to ${selectedOfficer ? selectedOfficer.username.split(' ')[0] : 'Technician'}`}
                     </button>
                   </div>
                 </div>

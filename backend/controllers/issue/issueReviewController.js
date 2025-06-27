@@ -9,7 +9,7 @@ exports.updateTechnicalOfficerIssue = async (req, res) => {
     const userId = req.user.userId;
 
     // Validate status
-    const validStatuses = ['In_Progress', 'Resolved', 'Need_More_Info'];
+    const validStatuses = ['In_Progress', 'Resolved', 'Need_More_Info', 'Add_To_Procurement'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ 
         message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 

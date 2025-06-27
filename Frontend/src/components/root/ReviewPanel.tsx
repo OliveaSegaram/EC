@@ -7,9 +7,10 @@ import {
   FiClock,
   FiPaperclip,
   FiCheckCircle,
-  FiRefreshCw,
-  FiMessageSquare
-} from 'react-icons/fi'; 
+  FiFilter,
+  FiMessageSquare,
+  FiRefreshCw
+} from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { AppContext } from '../../provider/AppContext';
 
@@ -36,47 +37,6 @@ interface ReviewIssue {
   lastUpdatedStatus?: string;
 }
 
-// Component to handle text truncation with read more/less
-const TruncatedText: React.FC<{ text: string; maxLength: number }> = ({ text, maxLength }) => {
-  const [isExpanded, setIsExpanded] = React.useState(false);
-  const needsTruncation = text.length > maxLength;
-  
-  if (!needsTruncation) {
-    return <span>{text}</span>;
-  }
-  
-  return (
-    <div className="break-words">
-      {isExpanded ? (
-        <>
-          {text}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(false);
-            }}
-            className="text-blue-600 hover:text-blue-800 ml-1 text-xs"
-          >
-            Show less
-          </button>
-        </>
-      ) : (
-        <>
-          {`${text.substring(0, maxLength)}...`}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(true);
-            }}
-            className="text-blue-600 hover:text-blue-800 ml-1 text-xs"
-          >
-            Read more
-          </button>
-        </>
-      )}
-    </div>
-  );
-};
 
 const ReviewPanel: React.FC = () => {
   const appContext = useContext(AppContext);
@@ -84,10 +44,19 @@ const ReviewPanel: React.FC = () => {
   
   const { backendUrl } = appContext;
   const [issues, setIssues] = useState<ReviewIssue[]>([]);
+  const [filteredIssues, setFilteredIssues] = useState<ReviewIssue[]>([]);
   const [isConfirming, setIsConfirming] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<ReviewIssue | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [comment, setComment] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all'); // 'all', 'completed', 'resolved'
+  
+  // Filter options with icons and labels
+  const filterOptions = [
+    { value: 'all', label: 'All Issues' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'resolved', label: 'Resolved' }
+  ];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -228,9 +197,22 @@ const ReviewPanel: React.FC = () => {
     }
   }, []);
 
+  // Filter issues based on status
   useEffect(() => {
-    fetchIssues();
-  }, [fetchIssues]);
+    let filtered = [...issues];
+    
+    if (statusFilter === 'completed') {
+      filtered = filtered.filter(issue => 
+        issue.status === 'Resolved' || 
+        issue.status === 'SUPER_ADMIN_APPROVED' ||
+        issue.status === 'SUPER_ADMIN_REJECTED'
+      );
+    } else if (statusFilter === 'resolved') {
+      filtered = filtered.filter(issue => issue.status === 'Resolved');
+    }
+    
+    setFilteredIssues(filtered);
+  }, [issues, statusFilter]);
 
   useEffect(() => {
     fetchIssues();
@@ -296,7 +278,49 @@ const ReviewPanel: React.FC = () => {
 
   return (
     <div className="p-4">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">Technical Officer Updates - Review</h2>
+      <div className="space-y-4 mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 className="text-xl font-semibold text-gray-800">Technical Officer Updates</h2>
+          
+          <div className="relative w-full sm:w-auto">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiFilter className="h-4 w-4 text-gray-400" />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="block w-full pl-10 pr-12 py-2 text-base border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 sm:text-sm rounded-md bg-white appearance-none text-gray-700"
+              >
+                {filterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            
+            {statusFilter !== 'all' && (
+              <div className="mt-2 text-sm text-gray-600 flex items-center">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                  {filterOptions.find(opt => opt.value === statusFilter)?.label}: {filteredIssues.length}
+                </span>
+                <button 
+                  onClick={() => setStatusFilter('all')}
+                  className="ml-2 text-sm text-purple-600 hover:text-purple-800 flex items-center"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -304,39 +328,43 @@ const ReviewPanel: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Issue ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comment</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {issues.length === 0 && (
+            {filteredIssues.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-gray-400">No issues to review</td>
+                <td colSpan={5} className="px-6 py-4 text-center text-gray-400">
+                  {issues.length === 0 ? 'No issues to review' : 'No issues match the selected filter'}
+                </td>
               </tr>
+            ) : (
+              filteredIssues.map((issue) => (
+                <tr key={issue.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{issue.id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.complaintType || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getStatusBadge(issue.status)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <FiClock className="mr-1.5 h-4 w-4 text-gray-400" />
+                      {new Date(issue.updatedAt).toLocaleString()}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <button
+                      onClick={() => { setSelectedIssue(issue); setShowModal(true); }}
+                      className="text-blue-600 hover:text-blue-800"
+                      title="View Details"
+                    >
+                      <FiEye size={20} />
+                    </button>
+                  </td>
+                </tr>
+              ))
             )}
-            {issues.map((issue) => (
-              <tr key={issue.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{issue.id}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.complaintType || 'N/A'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {getStatusBadge(issue.status)}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  <div className="max-w-xs">
-                    <TruncatedText text={issue.comment || 'No comment'} maxLength={50} />
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-center">
-                  <button
-                    onClick={() => { setSelectedIssue(issue); setShowModal(true); }}
-                    className="text-blue-600 hover:text-blue-800"
-                    title="View Details"
-                  >
-                    <FiEye size={20} />
-                  </button>
-                </td>
-              </tr>
-            ))}
           </tbody>
         </table>
       </div>

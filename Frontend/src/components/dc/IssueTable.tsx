@@ -37,11 +37,8 @@ const IssueTable: React.FC<IssueTableProps> = ({
   // Toast notifications are handled by the global ToastContainer in App.tsx
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow p-4 relative">
-      {/* Toast Container */}
-      <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50">
-        <div id="toast-container"></div>
-      </div>
+    <div className="overflow-x-auto bg-white rounded-lg shadow p-6 relative mt-6">
+      {/* Toast Container - Using global toast container instead */}
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
@@ -68,7 +65,7 @@ const IssueTable: React.FC<IssueTableProps> = ({
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 py-1 text-xs rounded-full ${ISSUE_STATUS.getStatusColor(issue.status)}`}>
+                <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${ISSUE_STATUS.getStatusColor(issue.status)}`}>
                   {ISSUE_STATUS.getDisplayName(issue.status)}
                 </span>
               </td>

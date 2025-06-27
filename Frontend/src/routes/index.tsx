@@ -12,7 +12,7 @@ import DcDashboard from '../pages/dashboards/DcDashboard';
 import SuperUserDashboard from '../pages/dashboards/SuperUserDashboard';
 import TechnicalOfficerDashboard from '../pages/dashboards/TechnicalOfficerDashboard';
 
-// Role-based loader – no SidebarLayout here
+// Role-based loader 
 const DashboardLoader = ({ role }: { role: string }) => {
   switch (role) {
     case 'root':

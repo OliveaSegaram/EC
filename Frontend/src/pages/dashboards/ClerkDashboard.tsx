@@ -146,15 +146,27 @@ const ClerkDashboard = () => {
       if (response.data && response.data.issues) {
         const issuesData = response.data.issues;
         setIssues(issuesData);
+        
         // Filter pending and rejected issues for the dashboard
         const pending = issuesData.filter((issue: Issue) => issue.status === 'Pending');
-        const rejected = issuesData.filter((issue: Issue) => issue.status === 'Rejected');
+        // Include all possible rejected statuses
+        const rejected = issuesData.filter((issue: Issue) => 
+          issue.status === 'Rejected' || 
+          issue.status === 'Rejected by DC' ||
+          issue.status === 'Rejected by Super Admin' ||
+          issue.status === 'Issue rejected by Super Admin'
+        );
+        
+        console.log('Pending issues:', pending);
+        console.log('Rejected issues:', rejected);
+        
         setPendingIssues(pending);
         setRejectedIssues(rejected);
       } else {
         console.warn('No issues found or invalid response format');
         setIssues([]);
         setPendingIssues([]);
+        setRejectedIssues([]);
       }
     } catch (error) {
       console.error('Error fetching issues:', error);

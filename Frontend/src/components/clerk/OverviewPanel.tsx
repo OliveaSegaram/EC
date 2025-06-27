@@ -1,7 +1,5 @@
-import React, { useCallback } from 'react';
-import { FiPlus, FiXCircle, FiClock, FiList, FiRefreshCw } from 'react-icons/fi';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React from 'react';
+import { FiPlus, FiXCircle, FiClock, FiList } from 'react-icons/fi';
 
 interface Issue {
   id: number;
@@ -64,51 +62,15 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
   };
   
   const handleNewIssue = () => {
-    toast.info('Opening new issue form...');
     setShowSubmissionForm(true);
     setOverviewMode('form');
   };
-  
-  const handleRefresh = useCallback(async () => {
-    const toastId = toast.loading('Refreshing data...');
-    
-    try {
-      // This is a placeholder - in a real app, you would call the API to refresh data
-      // For now, we'll just show a success message after a short delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.update(toastId, {
-        render: 'Data refreshed successfully',
-        type: 'success',
-        isLoading: false
-      });
-      
-      // Here you would typically call your data fetching function
-      // await fetchData();
-      
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-      
-      toast.update(toastId, {
-        render: 'Failed to refresh data. Please try again.',
-        type: 'error',
-        isLoading: false
-      });
-    }
-  }, []);
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-gray-800">Dashboard</h2>
         <div className="flex space-x-3">
-          <button
-            onClick={handleRefresh}
-            className="flex items-center px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200 shadow-sm"
-            title="Refresh data"
-          >
-            <FiRefreshCw className="text-gray-600" />
-          </button>
           <button
             onClick={handleNewIssue}
             className="flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-md hover:from-purple-700 hover:to-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200 shadow-md"

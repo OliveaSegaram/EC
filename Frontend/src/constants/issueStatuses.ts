@@ -16,6 +16,7 @@ export const ISSUE_STATUS = {
   IN_PROGRESS: 'In Progress',
   RESOLVED: 'Resolved',
   REOPENED: 'Reopened',
+  ADD_TO_PROCUREMENT: 'Add_To_Procurement',
   
   // Status groups
   getPendingApproval: () => [
@@ -27,7 +28,8 @@ export const ISSUE_STATUS = {
   getActiveStatuses: () => [
     ISSUE_STATUS.ASSIGNED,
     ISSUE_STATUS.IN_PROGRESS,
-    ISSUE_STATUS.REOPENED
+    ISSUE_STATUS.REOPENED,
+    ISSUE_STATUS.ADD_TO_PROCUREMENT
   ],
   
   getCompletedStatuses: () => [
@@ -38,24 +40,24 @@ export const ISSUE_STATUS = {
   
   // Status display names
   getDisplayName: (status: string): string => {
-    const displayNames: Record<string, string> = {
+    const statusMap: Record<string, string> = {
       [ISSUE_STATUS.PENDING]: 'Pending',
       [ISSUE_STATUS.DC_APPROVED]: 'Approved by DC',
       [ISSUE_STATUS.DC_REJECTED]: 'Rejected by DC',
       [ISSUE_STATUS.SUPER_ADMIN_APPROVED]: 'Approved by Super Admin',
       [ISSUE_STATUS.SUPER_ADMIN_REJECTED]: 'Rejected by Super Admin',
-      [ISSUE_STATUS.ASSIGNED]: 'Assigned to Technician',
+      [ISSUE_STATUS.ASSIGNED]: 'Assigned',
       [ISSUE_STATUS.IN_PROGRESS]: 'In Progress',
       [ISSUE_STATUS.RESOLVED]: 'Resolved',
-      [ISSUE_STATUS.REOPENED]: 'Reopened'
+      [ISSUE_STATUS.REOPENED]: 'Reopened',
+      [ISSUE_STATUS.ADD_TO_PROCUREMENT]: 'Add to Procurement',
     };
-    
-    return displayNames[status] || status;
+    return statusMap[status] || status;
   },
   
   // Status colors for UI
   getStatusColor: (status: string): string => {
-    const colors: Record<string, string> = {
+    const colorMap: Record<string, string> = {
       [ISSUE_STATUS.PENDING]: 'bg-yellow-100 text-yellow-800',
       [ISSUE_STATUS.DC_APPROVED]: 'bg-blue-100 text-blue-800',
       [ISSUE_STATUS.DC_REJECTED]: 'bg-red-100 text-red-800',
@@ -64,9 +66,9 @@ export const ISSUE_STATUS = {
       [ISSUE_STATUS.ASSIGNED]: 'bg-purple-100 text-purple-800',
       [ISSUE_STATUS.IN_PROGRESS]: 'bg-blue-100 text-blue-800',
       [ISSUE_STATUS.RESOLVED]: 'bg-green-100 text-green-800',
-      [ISSUE_STATUS.REOPENED]: 'bg-orange-100 text-orange-800'
+      [ISSUE_STATUS.REOPENED]: 'bg-yellow-100 text-yellow-800',
+      [ISSUE_STATUS.ADD_TO_PROCUREMENT]: 'bg-indigo-100 text-indigo-800',
     };
-    
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colorMap[status] || 'bg-gray-100 text-gray-800';
   }
 } as const;

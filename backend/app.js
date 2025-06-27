@@ -30,6 +30,7 @@ app.use('/api/root', require('./routes/rootRoutes'));
 app.use('/api/issues', require('./routes/issueRoutes'));
 app.use('/api/assignments', require('./routes/issueAssignmentRoutes'));
 app.use('/api/reviews', require('./routes/issueReviewRoutes'));
+app.use('/api/updates', require('./routes/issueUpdateRoutes'));
 app.use('/api', require('./routes/dataRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 

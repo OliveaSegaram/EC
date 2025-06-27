@@ -1,6 +1,7 @@
 // Import all issue controllers
 const submissionController = require('./issueSubmissionController');
 const queryController = require('./issueQueryController');
+//const queryController = require('../../backend/controllers/issue/issueQueryController');
 const approvalController = require('./issueApprovalController');
 const assignmentController = require('./issueAssignmentController');
 const reviewController = require('./issueReviewController');

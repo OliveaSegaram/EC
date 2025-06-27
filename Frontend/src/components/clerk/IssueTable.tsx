@@ -71,9 +71,6 @@ const IssueTable: React.FC<IssueTableProps> = ({
   const handleReopenIssue = async (issueId: number) => {
     if (isReopening) return; // Prevent multiple clicks
     
-    const confirmMessage = 'Are you sure you want to reopen this completed issue? This will restart the workflow and require DC approval again.';
-    if (!window.confirm(confirmMessage)) return;
-    
     setIsReopening(true);
     try {
       const token = localStorage.getItem('token');
@@ -97,7 +94,7 @@ const IssueTable: React.FC<IssueTableProps> = ({
       );
       
       if (response.status === 200) {
-        toast.success('Issue reopened successfully. Workflow has been restarted and sent for DC approval.');
+        // Success toast is now shown in the modal
         // Refresh the issues list
         if (fetchIssues) {
           await fetchIssues();
@@ -112,14 +109,11 @@ const IssueTable: React.FC<IssueTableProps> = ({
       
       if (axios.isAxiosError(error)) {
         if (error.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
           errorMessage = error.response.data?.message || error.response.statusText || 'Failed to reopen issue';
         } else if (error.request) {
           // The request was made but no response was received
           errorMessage = 'No response from server. Please check your connection.';
         } else {
-          // Something happened in setting up the request
           errorMessage = error.message;
         }
       } else if (error instanceof Error) {
