@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment files
+.env
+
+# Logs
+*.log
+
+# Build output
+dist/
+build/
+
+# OS or editor-specific files
+.DS_Store
+.vscode/

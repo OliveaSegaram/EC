@@ -1,0 +1,41 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
+@import "tailwindcss";
+
+* {
+  font-family: 'Roboto', sans-serif;
+}
+
+/* PDF Generation Styles */
+.generating-pdf {
+  cursor: wait;
+}
+
+.generating-pdf * {
+  pointer-events: none;
+}
+
+/* Ensure PDF content is visible when generating */
+#report-content {
+  background: white;
+}
+
+/* Add some spacing for the PDF content */
+#report-content > * {
+  margin-bottom: 1.5rem;
+}
+
+/* Style for the download button */
+.download-pdf-btn {
+  transition: all 0.3s ease;
+}
+
+.download-pdf-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Ensure charts are properly sized in the PDF */
+canvas {
+  max-width: 100%;
+  height: auto !important;
+}
