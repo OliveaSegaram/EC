@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiUser, FiFile, FiInfo, FiCheckCircle } from 'react-icons/fi';
+import IconMapper from '../ui/IconMapper';
 import Button from '../ui/buttons/Button';
 import { toast } from 'react-toastify';
 import { AppContext } from '../../provider/AppContext';
@@ -59,7 +59,7 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="bg-[#4d1a57] text-white p-6 rounded-t-xl">
@@ -145,7 +145,7 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">{t('Submitted By')}</h4>
                   <div className="mt-1 flex items-center">
-                    <FiUser className="h-4 w-4 text-gray-400 mr-2" />
+                    <IconMapper iconName="User" iconSize={16} className="text-gray-400 mr-2" />
                     <span className="text-sm text-gray-900">
                       {issue.user.username || 'N/A'}
                     </span>
@@ -155,18 +155,24 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
 
               {/* Attachment */}
               {issue.attachment && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">{t('Attachment')}</h4>
-                  <div className="mt-1 flex items-center">
-                    <FiFile className="h-4 w-4 text-gray-400 mr-2" />
-                    <Button
-                      buttonText={t('View Attachment')}
-                      buttonColor="transparent"
-                      buttonStyle={1}
-                      textColor="#2563eb"
-                      onClick={handleViewAttachment}
-                      className="text-sm hover:underline p-0 h-auto"
-                    />
+                <div className="md:col-span-2">
+                  <h4 className="text-sm font-medium text-gray-500 mb-2">{t('Attachment')}</h4>
+                  <div 
+                    onClick={handleViewAttachment}
+                    className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200"
+                  >
+                    <div className="bg-purple-100 p-2 rounded-lg mr-3">
+                      <IconMapper iconName="FileText" iconSize={20} className="text-purple-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {issue.attachment.split('/').pop()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {t('Click to view')}
+                      </p>
+                    </div>
+                    <IconMapper iconName="ExternalLink" iconSize={16} className="text-gray-400 ml-2" />
                   </div>
                 </div>
               )}
@@ -218,13 +224,13 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
                         <div className="flex items-start">
                           <div className="flex-shrink-0 mt-0.5">
                             {isRejection ? (
-                              <FiInfo className="h-4 w-4 text-red-500" />
+                              <IconMapper iconName="Info" iconSize={16} className="text-red-500" />
                             ) : isApproval ? (
-                              <FiCheckCircle className="h-4 w-4 text-green-500" />
+                              <IconMapper iconName="CheckCircle" iconSize={16} className="text-green-500" />
                             ) : isAssignment ? (
-                              <FiUser className="h-4 w-4 text-blue-500" />
+                              <IconMapper iconName="User" iconSize={16} className="text-blue-500" />
                             ) : (
-                              <FiInfo className="h-4 w-4 text-purple-500" />
+                              <IconMapper iconName="Info" iconSize={16} className="text-purple-500" />
                             )}
                           </div>
                           <div className="ml-3 flex-1">

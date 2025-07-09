@@ -1,4 +1,4 @@
-import * as React from 'react';
+import type { FC } from 'react';
 import Button from '../ui/buttons/Button';
 import type { Issue } from '../../types/issue';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,7 @@ interface RejectCommentModalProps {
   isReject: boolean;
   isOptional?: boolean;
 }
-const RejectCommentModal: React.FC<RejectCommentModalProps> = ({
+const RejectCommentModal: FC<RejectCommentModalProps> = ({
   isOpen,
   onClose,
   onSubmit,

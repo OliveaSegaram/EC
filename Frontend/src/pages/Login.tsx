@@ -42,12 +42,15 @@ const Login = () => {
       });
 
       const data = await response.json();
+      console.log('Login response:', data); // Log the full response
+      
       if (!response.ok) throw new Error(data.message || 'Login failed');
 
       // Set token and user data through AuthProvider
       setToken(data.token, {
-        username: data.username, // Use the username from the response
-        // Add other user properties as needed
+        username: data.username || data.user?.username,
+        role: data.role || data.user?.role, 
+    
       });
       
       setIsLoggedIn(true);

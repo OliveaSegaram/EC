@@ -16,11 +16,11 @@ export interface SidebarItem {
 const defaultSidebarItems: SidebarItem[] = [
     { 
         linkName: 'Dashboard', 
-        icon: 'FaTachometerAlt',
+        icon: 'Grid', // FiGrid
     },
     { 
         linkName: 'Issues', 
-        icon: 'FaClipboardList',
+        icon: 'FileText', // FiFileText
     },
 ];
 
@@ -28,11 +28,11 @@ const defaultSidebarItems: SidebarItem[] = [
 const clerkSidebarItems: SidebarItem[] = [
     { 
         linkName: 'Dashboard', 
-        icon: 'FaTachometerAlt',
+        icon: 'Grid', // FiGrid
     },
     { 
         linkName: 'Issues', 
-        icon: 'FaClipboardList',
+        icon: 'FileText', // FiFileText
     },
 ];
 
@@ -40,19 +40,19 @@ const clerkSidebarItems: SidebarItem[] = [
 const rootSidebarItems: SidebarItem[] = [
     { 
         linkName: 'Issues', 
-        icon: 'FaClipboardList',
+        icon: 'FileText', // FiFileText
     },
     { 
         linkName: 'Registration', 
-        icon: 'FaUserPlus',
+        icon: 'UserPlus', // FiUserPlus
     },
     { 
         linkName: 'Roles', 
-        icon: 'FaUserShield',
+        icon: 'Shield', // FiShield
     },
     { 
         linkName: 'Review', 
-        icon: 'FaClipboardCheck',
+        icon: 'CheckSquare', // FiCheckSquare
     },
 ];
 

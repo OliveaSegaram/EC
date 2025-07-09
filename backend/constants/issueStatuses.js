@@ -3,9 +3,9 @@ module.exports = {
   // Initial status when issue is created
   PENDING: 'Pending',
   
-  // DC related statuses
-  DC_APPROVED: 'Approved by DC',
-  DC_REJECTED: 'Rejected by DC',
+  // DC/AC related statuses
+  DC_APPROVED: 'Approved by DC/AC',
+  DC_REJECTED: 'Rejected by DC/AC',
   
   // Super Admin related statuses
   SUPER_ADMIN_APPROVED: 'Approved by Super Admin',
@@ -41,8 +41,8 @@ module.exports = {
   getDisplayName: function(status) {
     const displayNames = {
       [this.PENDING]: 'Pending',
-      [this.DC_APPROVED]: 'Approved by DC',
-      [this.DC_REJECTED]: 'Rejected by DC',
+      [this.DC_APPROVED]: 'Approved by DC/AC',
+      [this.DC_REJECTED]: 'Rejected by DC/AC',
       [this.SUPER_ADMIN_APPROVED]: 'Approved by Super Admin',
       [this.SUPER_ADMIN_REJECTED]: 'Rejected by Super Admin',
       [this.ASSIGNED]: 'Assigned to Technician',

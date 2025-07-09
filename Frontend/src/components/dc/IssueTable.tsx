@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiEye } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
+import IconMapper from '../ui/IconMapper';
 
 interface Issue {
   id: number;
@@ -58,18 +58,47 @@ const IssueTable: React.FC<IssueTableProps> = ({
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{issue.id}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.complaintType}</td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  issue.priorityLevel === 'High' ? 'bg-red-100 text-red-800' :
-                  issue.priorityLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-green-100 text-green-800'
-                }`}>
-                  {issue.priorityLevel}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`p-1 rounded-full ${
+                    issue.priorityLevel === 'High' ? 'bg-red-100 text-red-800' :
+                    issue.priorityLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    <IconMapper 
+                      iconName={
+                        issue.priorityLevel === 'High' ? 'AlertTriangle' :
+                        issue.priorityLevel === 'Medium' ? 'AlertCircle' : 'Info'
+                      } 
+                      iconSize={14}
+                      className="inline"
+                    />
+                  </span>
+                  <span className={`text-xs ${
+                    issue.priorityLevel === 'High' ? 'text-red-800' :
+                    issue.priorityLevel === 'Medium' ? 'text-yellow-800' : 'text-green-800'
+                  }`}>
+                    {issue.priorityLevel}
+                  </span>
+                </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${ISSUE_STATUS.getStatusColor(issue.status)}`}>
-                  {ISSUE_STATUS.getDisplayName(issue.status)}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`p-1 rounded-full ${ISSUE_STATUS.getStatusColor(issue.status)}`}>
+                    <IconMapper 
+                      iconName={
+                        issue.status === 'PENDING' ? 'Clock' :
+                        issue.status === 'IN_PROGRESS' ? 'RefreshCw' :
+                        issue.status === 'RESOLVED' ? 'CheckCircle' :
+                        issue.status === 'REJECTED' ? 'XCircle' : 'AlertCircle'
+                      }
+                      iconSize={14}
+                      className="inline"
+                    />
+                  </span>
+                  <span className={`text-xs font-medium ${ISSUE_STATUS.getStatusColor(issue.status).replace('bg-', 'text-').replace('-100', '-800')}`}>
+                    {ISSUE_STATUS.getDisplayName(issue.status)}
+                  </span>
+                </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {new Date(issue.submittedAt).toLocaleDateString()}
@@ -85,7 +114,12 @@ const IssueTable: React.FC<IssueTableProps> = ({
                     className="text-[#6e2f74] hover:text-[#6e2f74] transition-colors duration-200 p-1 rounded"
                     title={t('viewDetails')}
                   >
-                    <FiEye size={18} color="#6e2f74" className="hover:scale-110 transition-transform" />
+                    <IconMapper 
+                      iconName="Eye" 
+                      iconSize={18} 
+                      iconColor="#6e2f74" 
+                      className="hover:scale-110 transition-transform" 
+                    />
                   </button>
                 </div>
               </td>

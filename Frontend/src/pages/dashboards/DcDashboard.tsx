@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaMapPin, FaExclamationTriangle } from 'react-icons/fa';
+import { FaMapPin } from 'react-icons/fa';
 import axios from 'axios';
 import { AppContext } from '../../provider/AppContext';
 import { toast } from 'react-toastify';
@@ -26,7 +26,7 @@ interface Issue {
   comment?: string;
 }
 
-const DCDashboard = () => {
+const DCACDashboard = () => {
   const navigate = useNavigate();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'overview' | 'issues'>('overview');
@@ -38,7 +38,7 @@ const DCDashboard = () => {
   const [rejectComment, setRejectComment] = useState('');
   const [userDistrict, setUserDistrict] = useState<string>('');
   const [userDistrictId, setUserDistrictId] = useState<string>('');
-  const [username, setUsername] = useState<string>('');
+  //const [username, setUsername] = useState<string>('');
   const { backendUrl } = useContext(AppContext);
   
   // Handle sidebar selection
@@ -81,11 +81,9 @@ const DCDashboard = () => {
       });
 
       const userData = response.data;
-      console.log('User profile data:', userData);
+      // console.log('User profile data:', userData);
 
-      if (userData && userData.username) {
-        setUsername(userData.username);
-
+      if (userData) {
         if (userData.district) {
           if (typeof userData.district === 'object' && userData.district.name) {
             setUserDistrict(userData.district.name);
@@ -100,7 +98,7 @@ const DCDashboard = () => {
           setUserDistrictId(userData.districtId);
         }
 
-        console.log('Username set to:', userData.username);
+
     } catch (error) {
       console.error('Error fetching user profile:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -229,7 +227,7 @@ const DCDashboard = () => {
   // Fetch issues when district ID changes
   useEffect(() => {
     if (userDistrictId) {
-      fetchIssues(true); // Show success toast only on initial load
+      fetchIssues(true); 
     }
   }, [userDistrictId]);
 
@@ -243,7 +241,7 @@ const DCDashboard = () => {
       
       await axios.post(
         `${backendUrl}/issues/${issueId}/approve-dc`,
-        { comment: 'Approved by DC' },
+        { comment: 'Approved by DC/AC' },
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -256,7 +254,7 @@ const DCDashboard = () => {
       setIssues(currentIssues => 
         currentIssues.map(issue => 
           issue.id === issueId 
-            ? { ...issue, status: ISSUE_STATUS.DC_APPROVED, comment: 'Approved by DC' } 
+            ? { ...issue, status: ISSUE_STATUS.DC_APPROVED, comment: 'Approved by DC/AC' } 
             : issue
         )
       );
@@ -328,10 +326,10 @@ const DCDashboard = () => {
     setShowCommentModal(true);
   };
 
-  const handleLogout = () => {
+  {/*const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
-  };
+  };*/}
 
   const getStatusColor = (status: string) => {
     const statusLower = status.toLowerCase();
@@ -373,14 +371,14 @@ const DCDashboard = () => {
 
   return (
     <Layout 
-      title="DC Dashboard"
+      title="DC/AC Dashboard"
       dashboardType="default"
       onSidebarSelect={handleSidebarSelect}
       selectedIndex={selectedIndex}
       onSelectedIndexChange={setSelectedIndex}
       customSidebarItems={[
-        { linkName: 'Overview', icon: 'FaTh' },
-        { linkName: 'Issues', icon: 'FaList' }
+        { linkName: 'Overview', icon: 'Grid' }, // FiGrid
+        { linkName: 'Issues', icon: 'List' }     // FiList
       ]}
     >
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -507,4 +505,4 @@ const DCDashboard = () => {
   );
 };
 
-export default DCDashboard;
+export default DCACDashboard;

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useAppContext } from '../../provider/AppContext';
 import AssignedTasks from '../../components/technicalofficer/AssignedTasks';
 import Layout from '../../components/layout/Layout';
 import type { SidebarItem } from '../../components/layout/Layout';
@@ -7,8 +6,6 @@ import type { SidebarItem } from '../../components/layout/Layout';
 
 
 const TechnicalOfficerDashboard = () => {
-  const { setIsLoggedIn } = useAppContext();
-
   const [activeTab, setActiveTab] = useState<'AssignedTasks'>('AssignedTasks');
   const [selectedIndex, setSelectedIndex] = useState(0);
   
@@ -16,7 +13,7 @@ const TechnicalOfficerDashboard = () => {
   const sidebarItems: SidebarItem[] = [
     { 
       linkName: 'Assigned Tasks', 
-      icon: 'FaClipboardList',
+      icon: 'Clipboard', 
     },
   ];
 

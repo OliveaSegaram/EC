@@ -11,7 +11,7 @@ interface IssueState {
   complaintType: string;
   description: string;
   priorityLevel: string;
-  branch: string; // Branch field for Colombo Head Office
+  branch: string; 
   attachment: File | null;
   underWarranty: boolean;
 }

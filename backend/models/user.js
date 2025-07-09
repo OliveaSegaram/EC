@@ -96,6 +96,7 @@ module.exports = (sequelize, DataTypes) => {
       onDelete: 'SET NULL',
       onUpdate: 'CASCADE'
     });
+  
     
     // Explicitly define the relationship to prevent any automatic inclusion of skillId
     User.belongsToMany(models.Skill, {
@@ -114,4 +115,6 @@ module.exports = (sequelize, DataTypes) => {
   }, { override: true });
 
   return User;
+
 };
+

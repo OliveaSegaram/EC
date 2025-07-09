@@ -102,7 +102,7 @@ const ClerkDashboard = () => {
         // Filter pending and rejected issues for the dashboard
         const pending = issuesData.filter((issue: Issue) => issue.status === 'Pending');
         const rejected = issuesData.filter((issue: Issue) => 
-          ['Rejected', 'Rejected by DC', 'Rejected by Super Admin', 'Issue rejected by Super Admin'].includes(issue.status)
+          ['Rejected', 'Rejected by DC/AC', 'Rejected by Super Admin', 'Issue rejected by Super Admin'].includes(issue.status)
         );
         
         setPendingIssues(pending);
@@ -128,7 +128,7 @@ const ClerkDashboard = () => {
       'Pending Approval': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
       
       // Approved states
-      'DC Approved': 'bg-green-50 text-green-800 border border-green-200',
+      'DC/AC Approved': 'bg-green-50 text-green-800 border border-green-200',
       'Issue approved by Super Admin': 'bg-green-50 text-green-800 border border-green-200',
       'Super User Approved': 'bg-green-50 text-green-800 border border-green-200',
       'Super Admin Approved': 'bg-green-50 text-green-800 border border-green-200',
@@ -141,7 +141,7 @@ const ClerkDashboard = () => {
       
       // Rejected states
       'Rejected': 'bg-red-50 text-red-800 border border-red-200',
-      'Rejected by DC': 'bg-red-50 text-red-800 border border-red-200',
+      'Rejected by DC/AC': 'bg-red-50 text-red-800 border border-red-200',
       'Rejected by Super Admin': 'bg-red-50 text-red-800 border border-red-200',
       'Issue rejected by Super Admin': 'bg-red-50 text-red-800 border border-red-200',
       

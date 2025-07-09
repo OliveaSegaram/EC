@@ -392,7 +392,7 @@ const Register = () => {
               <option value="subject_clerk">Subject Clerk</option>
               <option value="super_user">Super User</option>
               <option value="technical_officer">Technical Officer</option>
-              <option value="dc">DC</option>
+              <option value="dc">DC/AC</option>
               <option value="other">Other</option>
             </select>
 
@@ -452,7 +452,11 @@ const Register = () => {
 
             <textarea
               name="description"
-              placeholder={t('Enter a short description or reason for registering')}
+              placeholder={
+                districts.find(d => d.id.toString() === formData.districtId)?.name === 'Colombo Head Office' 
+                  ? t('Please include your branch and your short description') 
+                  : t('Enter a short description or reason for registering')
+              }
               value={formData.description}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 resize-none transition-colors"

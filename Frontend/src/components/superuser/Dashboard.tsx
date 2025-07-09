@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiCheckCircle, FiLayers, FiEye, FiUser, FiChevronDown, FiFileText } from 'react-icons/fi';
+import IconMapper from '../ui/IconMapper';
 import Button from '../ui/buttons/Button';
 import axios from 'axios';
 
@@ -373,7 +373,7 @@ const Dashboard = () => {
       case 'Pending':
       case 'Pending Approval':
         return 'bg-yellow-100 text-yellow-800';
-      case 'DC Approved':
+      case 'DC/AC Approved':
       case 'Issue approved by Super Admin':
       case 'Super User Approved':
       case 'Super Admin Approved':
@@ -383,7 +383,7 @@ const Dashboard = () => {
       case 'Under Repair':
         return 'bg-blue-100 text-blue-800';
       case 'Rejected':
-      case 'Rejected by DC':
+      case 'Rejected by DC/AC':
       case 'Issue rejected by Super Admin':
       case 'Rejected by Super Admin':
         return 'bg-red-100 text-red-800';
@@ -421,7 +421,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 flex items-center space-x-4">
             <div className="bg-blue-100 text-blue-600 p-2 rounded-md">
-              <FiLayers size={24} />
+              <IconMapper iconName="File" iconSize={24} iconColor="#3B82F6" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-700">{t('totalIssues')}</h3>
@@ -431,7 +431,7 @@ const Dashboard = () => {
 
           <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 flex items-center space-x-4">
             <div className="bg-purple-100 text-purple-600 p-2 rounded-md">
-              <FiCheckCircle size={24} />
+              <IconMapper iconName="CheckCircle" iconSize={24} iconColor="#9333EA" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-700">{t('completed')}</h3>
@@ -441,7 +441,7 @@ const Dashboard = () => {
 
           <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 flex items-center space-x-4">
             <div className="bg-yellow-100 text-yellow-600 p-2 rounded-md">
-              <FiLayers size={24} />
+              <IconMapper iconName="ShoppingBag" iconSize={24} iconColor="#D97706" />
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-700">{t('underProcurement')}</h3>
@@ -459,7 +459,7 @@ const Dashboard = () => {
             onClick={() => setShowReportModal(true)}
             className="flex items-center gap-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-[#4d1a57] hover:bg-[#3a1343] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4d1a57] text-sm"
           >
-            <FiFileText className="mr-1" /> {t('generateReport')}
+            <IconMapper iconName="File" iconSize={16} iconColor="#FFFFFF" marginRight={4} /> {t('generateReport')}
           </button>
         </div>
         <div className="overflow-x-auto rounded-t-lg overflow-hidden">
@@ -467,7 +467,7 @@ const Dashboard = () => {
             <thead className="bg-[#4d1a57]">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-normal">
-                  {t('deviceId')}
+                  {t('Issue Id')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-normal">
                   {t('type')}
@@ -514,7 +514,7 @@ const Dashboard = () => {
                       className="relative text-[#6e2f74] hover:text-[#6e2f74] flex items-center group transition-colors duration-200"
                       title="View Details"
                     >
-                      <FiEye size={22} color="#6e2f74" />
+                      <IconMapper iconName="Eye" iconSize={22} iconColor="#6e2f74" />
                       <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#6e2f74] group-hover:w-full transition-all duration-300"></span>
                     </button>
                   </td>
@@ -547,6 +547,13 @@ const Dashboard = () => {
             
             {/* Main Content */}
             <div className="p-6">
+              {/* Device ID at the top */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-1">{t('deviceId')}</h4>
+                <p className="text-lg font-semibold text-gray-900">
+                  {selectedIssue.deviceId || 'N/A'}
+                </p>
+              </div>
 
               <div className="mt-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -604,12 +611,6 @@ const Dashboard = () => {
                 <div className="border-t border-gray-200 pt-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <h4 className="text-sm font-medium text-gray-500">{t('submittedBy')}</h4>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedIssue.user?.username || 'N/A'}
-                      </p>
-                    </div>
-                    <div>
                       <h4 className="text-sm font-medium text-gray-500">{t('submissionDate')}</h4>
                       <p className="mt-1 text-sm text-gray-900">
                         {new Date(selectedIssue.submittedAt).toLocaleString()}
@@ -629,18 +630,19 @@ const Dashboard = () => {
                     
                     <div className="mb-4">
                       <label htmlFor="issue-comment" className="block text-sm font-medium text-gray-700 mb-2">
-                        {t('addNotes')}
+                        {t('addNotes')} {isComputerRepairUnderWarranty(selectedIssue) && <span className="text-red-500">*</span>}
                       </label>
                       <textarea
                         id="issue-comment"
                         rows={3}
-                        className="shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border border-gray-300 rounded-md p-2"
+                        className={`shadow-sm focus:ring-purple-500 focus:border-purple-500 block w-full sm:text-sm border ${isComputerRepairUnderWarranty(selectedIssue) && !currentComment ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}
                         placeholder={isComputerRepairUnderWarranty(selectedIssue) 
                           ? t('enterWarrantyNotes') 
                           : t('enterProcurementNotes')}
                         value={currentComment}
                         onChange={(e) => setCurrentComment(e.target.value)}
                         disabled={isUpdatingStatus}
+                        required={isComputerRepairUnderWarranty(selectedIssue)}
                       />
                     </div>
 
@@ -666,8 +668,13 @@ const Dashboard = () => {
                           buttonColor="#6E2F74"
                           textColor="white"
                           iconName={isUpdatingStatus ? 'FiLoader' : 'FiShoppingCart'}
-                          onClick={() => handleUpdateStatus('Under Procurement', currentComment)}
-                          disabled={isUpdatingStatus}
+                          onClick={() => {
+                            if (isComputerRepairUnderWarranty(selectedIssue) && !currentComment.trim()) {
+                              return; // Validation will show the error message
+                            }
+                            handleUpdateStatus('Under Procurement', currentComment);
+                          }}
+                          disabled={isUpdatingStatus || (isComputerRepairUnderWarranty(selectedIssue) && !currentComment.trim())}
                           className="px-4 py-2 text-sm mr-2"
                         />
                       )}
@@ -677,8 +684,13 @@ const Dashboard = () => {
                         buttonColor="#6E2F74"
                         textColor="white"
                         iconName={isUpdatingStatus ? 'FiLoader' : 'FiCheck'}
-                        onClick={() => handleUpdateStatus('Completed', currentComment)}
-                        disabled={isUpdatingStatus}
+                        onClick={() => {
+                          if (isComputerRepairUnderWarranty(selectedIssue) && !currentComment.trim()) {
+                            return; // Validation will show the error message
+                          }
+                          handleUpdateStatus('Completed', currentComment);
+                        }}
+                        disabled={isUpdatingStatus || (isComputerRepairUnderWarranty(selectedIssue) && !currentComment.trim())}
                         className="px-4 py-2 text-sm"
                       />
                     </div>
@@ -700,13 +712,13 @@ const Dashboard = () => {
                         className="relative w-full bg-white border-2 border-[#6E2F74] rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-default focus:outline-none focus:ring-2 focus:ring-[#8a3d91] focus:border-[#8a3d91] sm:text-sm transition-colors duration-200"
                       >
                         <span className="flex items-center">
-                          <FiUser className="flex-shrink-0 h-5 w-5 text-[#6E2F74]" />
+                          <IconMapper iconName="User" iconSize={20} iconColor="#6E2F74" className="flex-shrink-0" />
                           <span className="ml-3 block truncate text-gray-900">
                             {selectedOfficer ? selectedOfficer.username : t('selectTechnicalOfficer')}
                           </span>
                         </span>
                         <span className="ml-3 absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                          <FiChevronDown className="h-5 w-5 text-[#6E2F74]" />
+                          <IconMapper iconName="ChevronDown" iconSize={20} iconColor="#6E2F74" />
                         </span>
                       </button>
                       
@@ -722,7 +734,7 @@ const Dashboard = () => {
                                 onClick={() => handleOfficerSelect(officer)}
                               >
                                 <div className="flex items-center">
-                                  <FiUser className="flex-shrink-0 h-5 w-5 text-gray-400" />
+                                  <IconMapper iconName="User" iconSize={20} iconColor="#9CA3AF" className="flex-shrink-0" />
                                   <span className="ml-3 block font-normal truncate">
                                     {officer.username} ({officer.email})
                                   </span>

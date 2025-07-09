@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FC, ReactElement } from 'react';
-import { FiEye, FiFilter } from 'react-icons/fi';
+import IconMapper from '../ui/IconMapper';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import type { Issue } from '../../types/issue';
@@ -9,6 +9,8 @@ import { ISSUE_STATUS } from '../../constants/issueStatuses';
 import { AppContext } from '../../provider/AppContext';
 import RootIssueDetails from './RootIssueDetails';
 import RejectCommentModal from './RejectCommentModal';
+import SimplePagination from '../common/SimplePagination';
+import { useSimplePagination } from '../../hooks/useSimplePagination';
 
 
 const IssuePanel: FC = (): ReactElement => {
@@ -32,6 +34,9 @@ const IssuePanel: FC = (): ReactElement => {
   
   // State for status filter
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  
+  // Pagination
+  const itemsPerPage = 10; // Number of items per page
   
   // Auto-refresh issues when refreshTrigger changes
   useEffect(() => {
@@ -76,7 +81,7 @@ const IssuePanel: FC = (): ReactElement => {
       console.log('Issues API response:', response.data);
 
       if (response.data && response.data.issues) {
-        // The backend now filters for DC-approved issues for root users
+        // The backend now filters for DC/AC-approved issues for root users
         const newIssues = response.data.issues as Issue[];
         setIssues(prevIssues => {
           // Only update if the data has actually changed
@@ -173,18 +178,27 @@ const IssuePanel: FC = (): ReactElement => {
     }
   };
 
-  const openApproveModal = (issue: Issue) => {
+  const openApproveModal = (issue: Issue | null) => {
+    if (!issue) return;
     setCommentIssue(issue);
     setApproveComment('');
-    // Close the details modal and open approve modal
     setShowModal(false);
     setShowApproveModal(true);
   };
-  
-  // openRejectCommentModal is now defined below in the code
+
+  const openRejectCommentModal = (issue: Issue | null) => {
+    if (!issue) return;
+    setCommentIssue(issue);
+    setRejectComment('');
+    setShowModal(false);
+    setShowCommentModal(true);
+    toast.info(t('provideReasonForRejection'), {
+      autoClose: 4000
+    });
+  };
 
   const handleRejectIssue = async (issueId: number) => {
-    const issueToReject = issues.find(issue => issue.id === issueId);
+    const issueToReject = issues.find((issue) => issue.id === issueId);
     if (!issueToReject) {
       toast.error(t('issueNotFound'));
       return false;
@@ -243,7 +257,6 @@ const IssuePanel: FC = (): ReactElement => {
         }
       );
 
-      // Handle non-2xx responses
       if (response.status >= 200 && response.status < 300) {
         // Clear form and close modals
         setRejectComment('');
@@ -299,16 +312,8 @@ const IssuePanel: FC = (): ReactElement => {
     }
   };
 
-  const openRejectCommentModal = (issue: Issue) => {
-    setCommentIssue(issue);
-    setRejectComment('');
-    setShowCommentModal(true);
-    
-    // Show info toast about the action
-    toast.info(t('provideReasonForRejection'), {
-      autoClose: 4000
-    });
-  };
+  // openRejectCommentModal is now defined above with proper null checks
+  // and toast notifications are handled in the component rendering
 
   // Helper functions for styling
   const getStatusColor = (status: string): string => {
@@ -342,28 +347,27 @@ const IssuePanel: FC = (): ReactElement => {
   };
 
   // Filter issues based on status
-  const filteredIssues = issues.filter(issue => {
-    if (statusFilter === 'all') return true;
-    return issue.status === statusFilter;
-  });
+  const filteredIssues = React.useMemo(() => 
+    issues.filter(issue => statusFilter === 'all' || issue.status === statusFilter)
+  , [issues, statusFilter]);
 
   // Get unique statuses for filter options
-  const statusOptions = [
+  const statusOptions = React.useMemo(() => [
     { value: 'all', label: t('allIssues') },
     { value: ISSUE_STATUS.PENDING, label: t('pending') },
-    { value: ISSUE_STATUS.DC_APPROVED, label: t('dcApproved') },
-    { value: ISSUE_STATUS.DC_REJECTED, label: t('dcRejected') },
+    { value: ISSUE_STATUS.DC_APPROVED, label: t('DC/AC Approved') },
+    { value: ISSUE_STATUS.DC_REJECTED, label: t('DC/AC Rejected') },
     { value: ISSUE_STATUS.SUPER_ADMIN_APPROVED, label: t('approvedByAdmin') },
     { value: ISSUE_STATUS.SUPER_ADMIN_REJECTED, label: t('rejectedByAdmin') },
   ].filter(option => {
     // Only show statuses that exist in the current issues
     if (option.value === 'all') return true;
     return issues.some(issue => issue.status === option.value);
-  });
+  }), [issues, t]);
 
-  // Group and sort issues by date
-  const sortedAndGroupedIssues = Object.entries(
-    filteredIssues.reduce<Record<string, Issue[]>>((groups, issue) => {
+  // Group issues by date
+  const sortedAndGroupedIssues = React.useMemo(() => {
+    const grouped = filteredIssues.reduce<Record<string, Issue[]>>((groups, issue) => {
       const date = new Date(issue.submittedAt).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -374,8 +378,44 @@ const IssuePanel: FC = (): ReactElement => {
       }
       groups[date].push(issue);
       return groups;
-    }, {})
-  ).sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime());
+    }, {});
+    
+    return Object.entries(grouped)
+      .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime());
+  }, [filteredIssues]);
+  
+  // Flatten the grouped issues for pagination
+  const flattenedIssues = React.useMemo(() => {
+    return sortedAndGroupedIssues.flatMap(([_, dateIssues]) => dateIssues);
+  }, [sortedAndGroupedIssues]);
+  
+  // Pagination
+  const { 
+    paginatedItems, 
+    currentPage, 
+    totalPages, 
+    handlePageChange 
+  } = useSimplePagination(flattenedIssues, itemsPerPage);
+  
+  // Recreate the grouped structure for the current page
+  const paginatedAndGroupedIssues = React.useMemo(() => {
+    const paginatedGrouped: Record<string, Issue[]> = {};
+    
+    paginatedItems.forEach((issue) => {
+      const date = new Date(issue.submittedAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      if (!paginatedGrouped[date]) {
+        paginatedGrouped[date] = [];
+      }
+      paginatedGrouped[date].push(issue);
+    });
+    
+    return Object.entries(paginatedGrouped)
+      .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime());
+  }, [paginatedItems]);
 
   return (
     <div className="p-4 h-full flex flex-col">
@@ -385,12 +425,14 @@ const IssuePanel: FC = (): ReactElement => {
         <div className="relative w-full sm:w-64">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FiFilter className="h-4 w-4 text-gray-400" />
+              <IconMapper iconName="FilterList" iconSize={20} />
             </div>
             <select
+              id="status-filter"
+              name="status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="block w-full pl-10 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 sm:text-sm rounded-md bg-white appearance-none text-gray-700"
+              className="block w-full pl-10 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md"
             >
               {statusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -446,69 +488,90 @@ const IssuePanel: FC = (): ReactElement => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {sortedAndGroupedIssues.map(([date, dateIssues]) => (
-                <React.Fragment key={date}>
-                  <tr className="bg-gray-50 sticky top-10 z-5">
-                    <td colSpan={6} className="px-6 py-2 text-sm font-medium text-gray-900 bg-gray-50">
-                      {date}
-                    </td>
-                  </tr>
-                  {dateIssues.map((issue) => (
-                    <tr key={issue.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                        #{issue.id}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                        {issue.complaintType}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
-                          {issue.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priorityLevel)}`}>
-                          {issue.priorityLevel}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                        {issue.location}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-                        <button
-                          onClick={() => {
-                            setSelectedIssue(issue);
-                            setShowModal(true);
-                          }}
-                          className="text-indigo-600 hover:text-indigo-900 mr-3"
-                        >
-                          <FiEye className="h-5 w-5" color="#6e2f74" />
-                        </button>
+              {paginatedAndGroupedIssues.length > 0 ? (
+                paginatedAndGroupedIssues.map(([date, dateIssues]) => (
+                  <React.Fragment key={date}>
+                    <tr className="bg-gray-50 sticky top-10 z-5">
+                      <td colSpan={6} className="px-6 py-2 text-sm font-medium text-gray-900 bg-gray-50">
+                        {date}
                       </td>
                     </tr>
-                  ))}
-                </React.Fragment>
-              ))}
+                    {dateIssues.map((issue) => (
+                      <tr key={issue.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
+                          #{issue.id}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                          {issue.complaintType}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
+                            {issue.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priorityLevel)}`}>
+                            {issue.priorityLevel}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                          {issue.location}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              setSelectedIssue(issue);
+                              setShowModal(true);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900 mr-3"
+                          >
+                            <IconMapper iconName="Visibility" iconSize={20} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                    No issues found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
+      
       </div>
-
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-end mt-4">
+          <SimplePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
+      )}
+      
       {/* Issue Details Modal */}
       {selectedIssue && (
         <RootIssueDetails
           selectedIssue={{
             ...selectedIssue,
-            // Pass comment as dcRejectionReason when status is 'Rejected by DC'
+            id: selectedIssue.id || 0, // Ensure id is always a number
+            // Pass comment as dcRejectionReason when status is 'Rejected by DC/AC'
             ...(selectedIssue.status === ISSUE_STATUS.DC_REJECTED && {
-              dcRejectionReason: selectedIssue.comment
+              dcRejectionReason: selectedIssue.comment || ''
             })
           }}
-          setSelectedIssue={setSelectedIssue}
           showModal={showModal}
           setShowModal={setShowModal}
-          handleApproveIssue={() => openApproveModal(selectedIssue)}
-          openRejectCommentModal={() => openRejectCommentModal(selectedIssue)}
+          setSelectedIssue={setSelectedIssue}
+          handleApproveIssue={() => selectedIssue && openApproveModal(selectedIssue)}
+          openRejectCommentModal={() => selectedIssue && openRejectCommentModal(selectedIssue)}
           getStatusColor={getStatusColor}
           getPriorityColor={getPriorityColor}
         />

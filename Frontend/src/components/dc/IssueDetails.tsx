@@ -1,19 +1,7 @@
 import React, { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppContext } from '../../provider/AppContext';
-import { 
-  FiX, 
-  FiRefreshCw, 
-  FiCheck, 
-  FiMessageSquare, 
-  FiCalendar, 
-  FiAlertCircle, 
-  FiMapPin, 
-  FiTool, 
-  FiClipboard, 
-  FiFileText, 
-  FiShield
-} from 'react-icons/fi';
+import IconMapper from '../ui/IconMapper';
 import Button from '../ui/buttons/Button';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
 import { toast } from 'react-toastify';
@@ -157,7 +145,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
   const allComments = getAllUserComments();
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-start justify-center p-4">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-start justify-center p-4 transition-opacity duration-200">
       <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl mt-10 mb-10 overflow-hidden">
         {/* Header */}
         <div className="bg-[#4d1a57] text-white p-6 rounded-t-xl">
@@ -168,18 +156,18 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${ISSUE_STATUS.getStatusColor(selectedIssue.status)}`}>
                   {ISSUE_STATUS.getDisplayName(selectedIssue.status)}
                 </span>
-                <span className="ml-3 text-purple-100 text-sm">
-                  <FiCalendar className="inline mr-1" />
+                <span className="ml-3 text-purple-100 text-sm flex items-center">
+                  <IconMapper iconName="Calendar" iconSize={14} iconColor="#E9D5FF" className="inline mr-1.5" />
                   {formatDate(selectedIssue.submittedAt)}
                 </span>
               </div>
             </div>
             <button
               onClick={handleCloseModal}
-              className="text-white hover:text-purple-200 transition-colors"
+              className="p-2 rounded-full hover:bg-transparent focus:outline-none"
               aria-label="Close"
             >
-              <FiX size={24} />
+              <IconMapper iconName="Close" iconSize={20} iconColor="#FFFFFF" />
             </button>
           </div>
         </div>
@@ -189,11 +177,11 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
           {/* Priority and Warranty Badge */}
           <div className="flex flex-wrap gap-3 mb-6">
             <div className={`px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedIssue.priorityLevel)}`}>
-              <FiAlertCircle className="inline mr-1" />
+              <IconMapper iconName="Warning" iconSize={16} className="inline mr-1" />
               {selectedIssue.priorityLevel} {t('priority')}
             </div>
             <div className={`px-3 py-1 rounded-full text-xs font-medium ${selectedIssue.underWarranty ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-              <FiShield className="inline mr-1" />
+              <IconMapper iconName="Lock" iconSize={16} className="inline mr-1" />
               {selectedIssue.underWarranty ? t('underWarranty') : t('notUnderWarranty')}
             </div>
           </div>
@@ -207,7 +195,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
               {/* Device and Location */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center">
-                  <FiTool className="mr-2" /> {t('deviceInformation')}
+                  <IconMapper iconName="Settings" iconSize={16} className="mr-2" /> {t('deviceInformation')}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -221,7 +209,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                   <div className="md:col-span-2">
                     <p className="text-xs font-medium text-gray-500">{t('location')}</p>
                     <p className="font-medium flex items-center">
-                      <FiMapPin className="mr-1 text-purple-600" />
+                      <IconMapper iconName="Home" iconSize={16} className="mr-1 text-purple-600" />
                       {selectedIssue.location}
                     </p>
                   </div>
@@ -231,7 +219,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
               {/* Description */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center">
-                  <FiFileText className="mr-2" /> {t('description')}
+                  <IconMapper iconName="File" iconSize={16} className="mr-2" /> {t('description')}
                 </h3>
                 <div className="prose max-w-none">
                   <p className="whitespace-pre-line">{selectedIssue.description}</p>
@@ -244,7 +232,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
               <div className="lg:col-span-1">
                 <div className="bg-gray-50 p-4 rounded-lg h-full">
                   <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center">
-                    <FiClipboard className="mr-2" /> {t('attachments')}
+                    <IconMapper iconName="Paperclip" iconSize={16} className="mr-2" /> {t('attachments')}
                   </h3>
                   <button
                     onClick={handleViewAttachment}
@@ -298,20 +286,24 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                   const statusMatch = commentText.match(/status updated to ([^\s]+)/i);
                   const status = statusMatch ? statusMatch[1] : null;
                   
-                  // Determine icon and background based on comment type
-                  let icon, bgColor;
+                  // Determine icon and styling based on comment type
+                  let iconName, iconColor, bgColor;
                   if (isStatusUpdate) {
-                    icon = <FiRefreshCw size={16} />;
-                    bgColor = 'bg-blue-500';
+                    iconName = 'RefreshCw';
+                    iconColor = 'text-blue-500';
+                    bgColor = 'bg-blue-100';
                   } else if (comment.type === 'REJECTION') {
-                    icon = <FiX size={16} />;
-                    bgColor = 'bg-red-500';
+                    iconName = 'X';
+                    iconColor = 'text-red-500';
+                    bgColor = 'bg-red-100';
                   } else if (comment.type === 'APPROVAL') {
-                    icon = <FiCheck size={16} />;
-                    bgColor = 'bg-green-500';
+                    iconName = 'Check';
+                    iconColor = 'text-green-500';
+                    bgColor = 'bg-green-100';
                   } else {
-                    icon = <FiMessageSquare size={16} />;
-                    bgColor = 'bg-purple-500';
+                    iconName = 'MessageSquare';
+                    iconColor = 'text-gray-700';
+                    bgColor = 'bg-gray-100';
                   }
                   
                   return (
@@ -319,8 +311,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                       key={comment.id} 
                       className={`flex gap-3 ${isStatusUpdate ? 'items-center' : 'items-start'}`}
                     >
-                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${bgColor}`}>
-                        {icon}
+                      <div className={`flex-shrink-0 flex items-center justify-center p-1.5 rounded-lg ${bgColor}`}>
+                        <IconMapper iconName={iconName} iconSize={20} className={iconColor} />
                       </div>
                       
                       <div className="flex-1 min-w-0">
@@ -364,8 +356,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
               </div>
             ) : (
               <div className="text-center py-8">
-                <FiMessageSquare className="mx-auto h-10 w-10 text-gray-300" />
-                <p className="mt-2 text-sm text-gray-500">{t('noActivityYet')}</p>
+                <div className="mx-auto mb-3">
+                  <IconMapper iconName="MessageSquare" iconSize={40} className="text-gray-300" />
+                </div>
+                <p className="text-sm font-medium text-gray-500">{t('noActivityYet')}</p>
                 <p className="text-xs text-gray-400 mt-1">{t('updatesWillAppearHere')}</p>
               </div>
             )}

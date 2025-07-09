@@ -1,11 +1,13 @@
 import { useState, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiTrash2, FiEye, FiChevronLeft, FiChevronRight, FiEdit2 } from 'react-icons/fi'; 
+import IconMapper from '../ui/IconMapper';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import IssueDetailsModal from './IssueDetailsModal';
 import IssueSubmit from './issuesubmit.tsx';
 import { AppContext } from '../../provider/AppContext';
+import SimplePagination from '../common/SimplePagination';
+import { useSimplePagination } from '../../hooks/useSimplePagination';
 
 interface Issue {
   id: number;
@@ -39,16 +41,15 @@ const IssueTable = ({
   setDeleteConfirm,
   getStatusColor,
   getPriorityColor,
-  currentPage,
-  setCurrentPage,
-  itemsPerPage,
   fetchIssues,
 }: IssueTableProps) => {
   const appContext = useContext(AppContext);
   if (!appContext) throw new Error('AppContext is not available');
   const { backendUrl } = appContext;
   const [filteredIssues, setFilteredIssues] = useState<Issue[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
+  
+  // Pagination
+  const { paginatedItems, currentPage, totalPages, handlePageChange } = useSimplePagination(filteredIssues, 5);
   const [districtMap, setDistrictMap] = useState<Record<string, string>>({});
   const [loadingDistricts, setLoadingDistricts] = useState(true);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
@@ -161,26 +162,7 @@ const IssueTable = ({
     }
     
     setFilteredIssues(filtered);
-    const total = Math.ceil(filtered.length / itemsPerPage);
-    setTotalPages(total || 1);
-    
-    if (currentPage > total && total > 0) {
-      setCurrentPage(1);
-    }
-  }, [issues, filterStatus, currentPage, itemsPerPage, setCurrentPage]);
-  
-  // Get current issues for pagination
-  const indexOfLastIssue = currentPage * itemsPerPage;
-  const indexOfFirstIssue = indexOfLastIssue - itemsPerPage;
-  const currentIssues = filteredIssues.slice(indexOfFirstIssue, indexOfLastIssue);
-  
-  // Change page
-  const paginate = (pageNumber: number) => {
-    if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
+  }, [issues, filterStatus]);
 
   // Fetch district names for all unique district IDs in the issues
   useEffect(() => {
@@ -235,7 +217,7 @@ const IssueTable = ({
     return location;
   };
 
-  const handleViewDetails = (issue: Issue) => {
+  const handleViewDetails = (issue: Issue | null) => {
     setSelectedIssue(issue);
     setShowDetailsModal(true);
   };
@@ -276,8 +258,8 @@ const IssueTable = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {currentIssues.length > 0 ? (
-              currentIssues.map((issue) => (
+            {paginatedItems.length > 0 ? (
+              paginatedItems.map((issue) => (
                 <tr key={issue.id} className="hover:bg-gray-50 transition-colors duration-150">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     <div className="flex items-center">
@@ -317,7 +299,7 @@ const IssueTable = ({
                         className="text-gray-500 hover:text-purple-600 transition-colors duration-200 p-1.5 rounded-full hover:bg-purple-50"
                         title="View Details"
                       >
-                        <FiEye size={18} />
+                        <IconMapper iconName="Eye" iconSize={20} className="text-purple-600 hover:text-purple-800" />
                       </button>
                       {issue.status === 'Pending' && (
                         <>
@@ -326,14 +308,14 @@ const IssueTable = ({
                             className="text-[#4d1a57] hover:text-[#3a1340] transition-colors duration-200 p-1.5 rounded-full hover:bg-purple-50"
                             title="Edit Issue"
                           >
-                            <FiEdit2 size={18} />
+                            <IconMapper iconName="Edit2" iconSize={20} className="text-blue-600 hover:text-blue-800" />
                           </button>
                           <button
                             onClick={() => setDeleteConfirm({ open: true, issue })}
                             className="text-red-500 hover:text-red-600 transition-colors duration-200 p-1.5 rounded-full hover:bg-red-50"
                             title="Delete Issue"
                           >
-                            <FiTrash2 size={18} />
+                            <IconMapper iconName="Trash2" iconSize={20} className="text-red-500 hover:text-red-600" />
                           </button>
                         </>
                       )}
@@ -357,90 +339,14 @@ const IssueTable = ({
         </table>
       </div>
       
-      {totalPages > 1 && (
-        <div className="bg-white px-6 py-4 flex items-center justify-between border-t border-gray-200">
-          <div className="flex-1 flex justify-between sm:hidden">
-            <button
-              onClick={() => paginate(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="px-4 py-2 text-sm text-gray-700">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => paginate(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-white bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 shadow-md"
-            >
-              Next
-            </button>
-          </div>
-          
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{indexOfFirstIssue + 1}</span> to{' '}
-                <span className="font-medium">
-                  {Math.min(indexOfLastIssue, filteredIssues.length)}
-                </span>{' '}
-                of <span className="font-medium">{filteredIssues.length}</span> results
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                <button
-                  onClick={() => paginate(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="sr-only">Previous</span>
-                  <FiChevronLeft className="h-5 w-5" />
-                </button>
-                
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum: number;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => paginate(pageNum)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === pageNum
-                          ? 'z-10 bg-gradient-to-r from-purple-600 to-purple-800 text-white border-purple-700 shadow-md'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 hover:bg-opacity-50'
-                      } transition-colors duration-200`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                
-                <button
-                  onClick={() => paginate(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                >
-                  <span className="sr-only">Next</span>
-                  <FiChevronRight className="h-5 w-5" />
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
-      )}
-
+      <div className="flex justify-end mt-4">
+        <SimplePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      </div>
+      
       {showDetailsModal && selectedIssue && (
         <IssueDetailsModal
           issue={selectedIssue}

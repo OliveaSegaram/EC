@@ -1,11 +1,13 @@
 import { useEffect, useState, useContext, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { FiEdit, FiClock, FiX, FiInfo, FiCheck, FiTool } from 'react-icons/fi';
+import IconMapper from '../ui/IconMapper';
 import { AppContext } from '../../provider/AppContext';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
 import axios from 'axios';
 import Button from '../ui/buttons/Button';
+import { useSimplePagination } from '../../hooks/useSimplePagination';
+import SimplePagination from '../common/SimplePagination';
 
 interface Issue {
   id: number;
@@ -32,6 +34,15 @@ const AssignedTasks = () => {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [districts, setDistricts] = useState<Record<string, string>>({});
+  
+  // Pagination
+  const itemsPerPage = 5;
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: paginatedIssues,
+    handlePageChange
+  } = useSimplePagination(filteredIssues, itemsPerPage);
 
   interface UpdateRequestData {
     comment: string;
@@ -302,6 +313,36 @@ const AssignedTasks = () => {
     return ISSUE_STATUS.getStatusColor(status);
   };
 
+  // Function to extract and format timestamp from a string
+  const extractAndFormatTimestamp = (text: string): { timestamp: string | null, content: string } => {
+    if (!text) return { timestamp: null, content: text };
+    
+    // This regex matches ISO 8601 timestamps in the format YYYY-MM-DDTHH:mm:ss.sssZ
+    const timestampRegex = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)/;
+    const match = text.match(timestampRegex);
+    
+    if (!match) return { timestamp: null, content: text };
+    
+    try {
+      const date = new Date(match[0]);
+      // Format as: "DD MMM, hh:mm a" (e.g., "09 Jul, 11:05 AM")
+      const formattedTimestamp = date.toLocaleString('en-US', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      // Remove the timestamp from the content
+      const content = text.replace(timestampRegex, '').trim();
+      
+      return { timestamp: formattedTimestamp, content };
+    } catch (e) {
+      return { timestamp: null, content: text };
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="bg-transparent">
@@ -321,12 +362,12 @@ const AssignedTasks = () => {
             onClick={() => setActiveFilter(activeFilter === 'Assigned to Technician' ? null : 'Assigned to Technician')}
           >
             <div className="flex items-center space-x-2.5">
-              <div className={`p-2 rounded-lg ${
+              <div className={`w-10 h-10 flex items-center justify-center rounded-full ${
                 activeFilter === 'Assigned to Technician'
-                  ? 'bg-blue-600/10 text-blue-600'
-                  : 'bg-blue-50 text-blue-500'
+                  ? 'bg-blue-200 text-blue-700'
+                  : 'bg-blue-100 text-blue-600'
               }`}>
-                <FiTool className="h-4 w-4" />
+                <IconMapper iconName="User" iconSize={16} className="m-0 p-0" />
               </div>
               <div>
                 <h3 className="text-base font-semibold text-gray-800">{t('assigned')}</h3>
@@ -351,12 +392,12 @@ const AssignedTasks = () => {
             onClick={() => setActiveFilter(activeFilter === 'In Progress' ? null : 'In Progress')}
           >
             <div className="flex items-center space-x-2.5">
-              <div className={`p-2 rounded-lg ${
+              <div className={`w-10 h-10 flex items-center justify-center rounded-full ${
                 activeFilter === 'In Progress'
-                  ? 'bg-amber-600/10 text-amber-600'
-                  : 'bg-amber-50 text-amber-500'
+                  ? 'bg-amber-200 text-amber-700'
+                  : 'bg-amber-100 text-amber-600'
               }`}>
-                <FiClock className="h-4 w-4 animate-pulse" />
+                <IconMapper iconName="Clock" iconSize={16} className="animate-pulse" />
               </div>
               <div>
                 <h3 className="text-base font-semibold text-gray-800">{t('inProgress')}</h3>
@@ -387,12 +428,12 @@ const AssignedTasks = () => {
             }}
           >
             <div className="flex items-center space-x-2.5">
-              <div className={`p-2 rounded-lg ${
+              <div className={`w-10 h-10 flex items-center justify-center rounded-full ${
                 activeFilter === 'Resolved' || activeFilter === 'Reopened'
-                  ? 'bg-green-600/10 text-green-600'
-                  : 'bg-green-50 text-green-500'
+                  ? 'bg-green-200 text-green-700'
+                  : 'bg-green-100 text-green-600'
               }`}>
-                <FiCheck className="h-4 w-4" />
+                <IconMapper iconName="Check" iconSize={16} />
               </div>
               <div>
                 <h3 className="text-base font-semibold text-gray-800">{t('resolved')}</h3>
@@ -420,8 +461,8 @@ const AssignedTasks = () => {
         {filteredIssues.length === 0 && (
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 rounded-r">
             <div className="flex">
-              <div className="flex-shrink-0">
-                <FiInfo className="h-5 w-5 text-blue-400" />
+              <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-100">
+                <IconMapper iconName="Info" iconSize={20} iconColor="#2563EB" />
               </div>
               <div className="ml-3">
                 <p className="text-sm text-blue-700">
@@ -448,13 +489,19 @@ const AssignedTasks = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredIssues.map((issue) => (
+              {paginatedIssues.map((issue) => (
                 <tr key={issue.id}>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">#{issue.id}</td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{issue.complaintType}</td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{issue.description}</td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
-                    <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">{issue.priorityLevel}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      issue.priorityLevel === 'High' ? 'bg-red-100 text-red-800' :
+                      issue.priorityLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {issue.priorityLevel}
+                    </span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
                     <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(issue.status)}`}>{issue.status}</span>
@@ -465,16 +512,33 @@ const AssignedTasks = () => {
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
                     <button
                       onClick={() => handleOpenModal(issue)}
-                      className="text-[#6e2f74] hover:text-white p-2 rounded-full hover:bg-[#6e2f74] transition-colors duration-200"
+                      className="group p-2 rounded-full hover:bg-[#6e2f74] transition-colors duration-200"
                       title={t('updateStatus')}
                     >
-                      <FiEdit size={18} className="w-5 h-5" />
+                      <div className="relative">
+                        <IconMapper 
+                          iconName="Edit2" 
+                          iconSize={20}
+                          className="text-[#6e2f74] group-hover:!text-white transition-colors duration-200"
+                        />
+                      </div>
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          
+          {/* Pagination */}
+          {filteredIssues.length > itemsPerPage && (
+            <div className="flex justify-end px-6 py-3 border-t border-gray-200">
+              <SimplePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -490,10 +554,20 @@ const AssignedTasks = () => {
                 className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
                 aria-label="Close modal"
               >
-                <FiX className="h-5 w-5" />
+                <IconMapper iconName="X" iconSize={20} className="text-gray-500 hover:text-gray-700" />
               </button>
             </div>
             <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">{t('deviceId')}</h4>
+                  <p className="mt-1 text-gray-700 font-medium">{selectedIssue.deviceId}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">{t('complaintType')}</h4>
+                  <p className="mt-1 text-gray-700">{selectedIssue.complaintType}</p>
+                </div>
+              </div>
               <div>
                 <h4 className="text-sm font-medium text-gray-500">{t('description')}</h4>
                 <p className="mt-1 text-gray-700">{selectedIssue.description}</p>
@@ -506,9 +580,27 @@ const AssignedTasks = () => {
                     {selectedIssue.status === 'Issue assigned by Super User' ? t('assignmentNote') : 
                      selectedIssue.status === 'Approved' ? t('approvalNote') : t('previousNote')}
                   </h4>
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap bg-white/50 p-3 rounded-md">
-                    {selectedIssue.comment}
-                  </p>
+                  <div className="space-y-3">
+                    {selectedIssue.comment.split('\n').filter(line => line.trim() !== '').map((line, index) => {
+                      const { timestamp, content } = extractAndFormatTimestamp(line);
+                      if (!content) return null;
+                      
+                      return (
+                        <div key={index} className="bg-white/50 p-3 rounded-md border border-gray-100 shadow-sm relative">
+                          {timestamp && (
+                            <div className="absolute top-2 right-2">
+                              <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded">
+                                {timestamp}
+                              </span>
+                            </div>
+                          )}
+                          <p className="text-sm text-gray-800 pr-16">
+                            {content}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               

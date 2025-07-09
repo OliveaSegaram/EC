@@ -116,41 +116,51 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
 
           {/* Show status-related comments */}
           <div className="space-y-4 mb-6">
-            {/* DC's Rejection Reason */}
+            {/* DC/AC's Rejection Reason */}
             {selectedIssue.status === ISSUE_STATUS.DC_REJECTED && (
               <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded-r">
-                <h4 className="text-sm font-medium text-red-800 mb-1">{t('Dc Rejection Reason')}</h4>
-                <p className="text-sm text-gray-700">
-                  {selectedIssue.comment || t('No Reason Provided')}
-                </p>
+                <h4 className="text-sm font-medium text-red-800 mb-2">{t('DC/AC Rejection Reason')}</h4>
+                <div className="bg-white p-3 rounded border border-red-100">
+                  <p className="text-sm text-gray-700 whitespace-pre-line">
+                    {selectedIssue.comment || t('No Reason Provided')}
+                  </p>
+                </div>
               </div>
             )}
             
             {/* Super Admin's Rejection Reason */}
             {selectedIssue.status === ISSUE_STATUS.SUPER_ADMIN_REJECTED && (
               <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded-r">
-                <h4 className="text-sm font-medium text-red-800 mb-1">{t('Super Admin Rejection Reason')}</h4>
-                <p className="text-sm text-gray-700">
-                  {selectedIssue.comment || t('No Reason Provided')}
-                </p>
+                <h4 className="text-sm font-medium text-red-800 mb-2">{t('Super Admin Rejection Reason')}</h4>
+                <div className="bg-white p-3 rounded border border-red-100">
+                  <p className="text-sm text-gray-700 whitespace-pre-line">
+                    {selectedIssue.comment || t('No Reason Provided')}
+                  </p>
+                </div>
               </div>
             )}
             
             {/* Super Admin's Approval Comment */}
             {(selectedIssue.status === ISSUE_STATUS.SUPER_ADMIN_APPROVED || selectedIssue.status === ISSUE_STATUS.RESOLVED) && selectedIssue.comment && (
               <div className="p-4 bg-green-50 border-l-4 border-green-400 rounded-r">
-                <h4 className="text-sm font-medium text-green-800 mb-1">
+                <h4 className="text-sm font-medium text-green-800 mb-2">
                   {selectedIssue.status === ISSUE_STATUS.RESOLVED ? t('Approval Note') : t('Super Admin Approval Note')}
                 </h4>
-                <p className="text-sm text-gray-700">{selectedIssue.comment}</p>
+                <div className="bg-white p-3 rounded border border-green-100">
+                  <p className="text-sm text-gray-700 whitespace-pre-line">
+                    {selectedIssue.comment}
+                  </p>
+                </div>
               </div>
             )}
             
-            {/* DC's Approval Status */}
+            {/* DC/AC's Approval Status */}
             {selectedIssue.status === ISSUE_STATUS.DC_APPROVED && (
               <div className="p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r">
-                <h4 className="text-sm font-medium text-blue-800 mb-1">{t('Dc Approval Status')}</h4>
-                <p className="text-sm text-gray-700">{t('Dc Approval Pending')}</p>
+                <h4 className="text-sm font-medium text-blue-800 mb-2">{t('DC/AC Approval Status')}</h4>
+                <div className="bg-white p-3 rounded border border-blue-100">
+                  <p className="text-sm text-gray-700">{t('DC/AC Approval Pending')}</p>
+                </div>
               </div>
             )}
           </div>
@@ -234,7 +244,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                         </div>
                       </div>
                       <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-900">{t('approvedByDC')}</p>
+                        <p className="text-sm font-medium text-gray-900">{t('approvedByDC/AC')}</p>
                         <p className="text-xs text-gray-500">{t('waitingForFinalApproval')}</p>
                       </div>
                     </div>
@@ -256,7 +266,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                 </div>
               </div>
 
-              {/* Actions - Only show for DC approved issues */}
+              {/* Actions - Only show for DC/AC approved issues */}
               {(selectedIssue.status === ISSUE_STATUS.DC_APPROVED) && (
                 <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                   <h3 className="text-sm font-medium text-gray-500">{t('actions')}</h3>
@@ -266,7 +276,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                       buttonColor="#3B0043" // Dark purple color
                       buttonStyle={2}
                       textColor="white"
-                      iconName="FiCheckCircle"
+                      iconName="CheckCircle"
                       iconSize={16}
                       onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
@@ -281,7 +291,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                       buttonColor="#3B0043" 
                       buttonStyle={1} 
                       textColor="#3B0043"
-                      iconName="FiXCircle"
+                      iconName="XCircle"
                       iconSize={16}
                       onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
@@ -298,7 +308,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
               {/* Show message for rejected issues */}
               {selectedIssue.status === ISSUE_STATUS.DC_REJECTED && (
                 <div className="bg-yellow-50 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-yellow-800">{t('issueRejectedByDC')}</h3>
+                  <h3 className="text-sm font-medium text-yellow-800">{t('issueRejectedBy DC/AC')}</h3>
                   <p className="mt-1 text-sm text-yellow-700">
                     {selectedIssue.comment || t('noReasonForRejection')}
                   </p>

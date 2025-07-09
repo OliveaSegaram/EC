@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiSearch, FiEye, FiCheckCircle, FiRefreshCw, FiMessageSquare } from 'react-icons/fi';
+import IconMapper from '../ui/IconMapper';
 import axios from 'axios';
 import { AppContext } from '../../provider/AppContext';
 import Button from '../ui/buttons/Button';
+import SimplePagination from '../common/SimplePagination';
+import { useSimplePagination } from '../../hooks/useSimplePagination';
 
 interface Approval {
   id: number;
@@ -41,7 +43,7 @@ interface Issue {
   approvals: Approval[];
 }
 
-type StatusFilter = 'all' | 'pending' | 'assigned';
+type StatusFilter = 'all' | 'pending' | 'assigned' | 'under_procurement';
 
 const Approvals = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'colombo'>('all');
@@ -55,11 +57,47 @@ const Approvals = () => {
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
-    assigned: 0
+    assigned: 0,
+    under_procurement: 0
   });
 
   const { backendUrl } = useContext(AppContext);
   const { t } = useTranslation();
+  
+  const filteredIssues = issues.filter(issue => {
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = (
+      issue.deviceId?.toLowerCase().includes(searchLower) ||
+      issue.complaintType?.toLowerCase().includes(searchLower) ||
+      issue.description?.toLowerCase().includes(searchLower) ||
+      issue.user?.username?.toLowerCase().includes(searchLower) ||
+      issue.id.toString().includes(searchLower)
+    );
+
+    // Apply status filter
+    if (statusFilter === 'pending') {
+      return matchesSearch && issue.status === 'Pending';
+    } else if (statusFilter === 'assigned') {
+      return matchesSearch && (
+        issue.status === 'Assigned to Technician' || 
+        issue.status === 'In Progress' ||
+        issue.status === 'Issue approved by Super Admin' || 
+        issue.status === 'DC Approved'
+      );
+    } else if (statusFilter === 'under_procurement') {
+      return matchesSearch && issue.status === 'Under Procurement';
+    }
+    return matchesSearch;
+  });
+  
+  // Pagination
+  const itemsPerPage = 5;
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: paginatedIssues,
+    handlePageChange
+  } = useSimplePagination(filteredIssues, itemsPerPage);
 
   const fetchUserProfile = async () => {
     try {
@@ -108,8 +146,9 @@ const Approvals = () => {
             i.status === 'Assigned to Technician' || 
             i.status === 'In Progress' ||
             i.status === 'Issue approved by Super Admin' || 
-            i.status === 'DC Approved'
-          ).length
+            i.status === 'DC/AC Approved'
+          ).length,
+          under_procurement: issuesData.filter((i: Issue) => i.status === 'Under Procurement').length
         });
       }
     } catch (error) {
@@ -129,29 +168,7 @@ const Approvals = () => {
     setShowViewModal(true);
   };
 
-  const filteredIssues = issues.filter(issue => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = (
-      issue.deviceId?.toLowerCase().includes(searchLower) ||
-      issue.complaintType?.toLowerCase().includes(searchLower) ||
-      issue.description?.toLowerCase().includes(searchLower) ||
-      issue.user?.username?.toLowerCase().includes(searchLower) ||
-      issue.id.toString().includes(searchLower)
-    );
-
-    // Apply status filter
-    if (statusFilter === 'pending') {
-      return matchesSearch && issue.status === 'Pending';
-    } else if (statusFilter === 'assigned') {
-      return matchesSearch && (
-        issue.status === 'Assigned to Technician' || 
-        issue.status === 'In Progress' ||
-        issue.status === 'Issue approved by Super Admin' || 
-        issue.status === 'DC Approved'
-      );
-    }
-    return matchesSearch;
-  });
+  // Moved filteredIssues declaration to before useSimplePagination
   
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -189,7 +206,7 @@ const Approvals = () => {
         <div className="flex items-center space-x-4">
           <div className="relative w-56">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FiSearch className="h-4 w-4 text-gray-400" />
+              <IconMapper iconName="Search" iconSize={16} iconColor="#9CA3AF" />
             </div>
             <input
               type="text"
@@ -250,7 +267,6 @@ const Approvals = () => {
           >
             {t('pending')} ({stats.pending})
           </button>
-
           <button
             onClick={() => setStatusFilter('assigned')}
             className={`px-3 py-1 rounded-full text-sm font-medium ${statusFilter === 'assigned' 
@@ -258,6 +274,14 @@ const Approvals = () => {
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-2 border-transparent'}`}
           >
             {t('assigned')} ({stats.assigned})
+          </button>
+          <button
+            onClick={() => setStatusFilter('under_procurement')}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${statusFilter === 'under_procurement' 
+              ? 'bg-[#fdf2f8] text-[#8a3d91] border-2 border-[#8a3d91]' 
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-2 border-transparent'}`}
+          >
+            {t('underProcurement')} ({stats.under_procurement || 0})
           </button>
         </div>
       </div>
@@ -268,7 +292,7 @@ const Approvals = () => {
         </div>
       ) : filteredIssues.length === 0 ? (
         <div className="text-center py-12">
-          <FiCheckCircle className="mx-auto text-4xl text-green-500 mb-4" />
+          <IconMapper iconName="CheckCircle" iconSize={48} iconColor="#10B981" className="mx-auto mb-4" />
           <p className="text-gray-500">{t('noApprovedIssuesFound')}</p>
         </div>
       ) : (
@@ -299,7 +323,7 @@ const Approvals = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredIssues.map((issue) => (
+              {paginatedIssues.map((issue) => (
                 <tr key={issue.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     #{issue.id}
@@ -331,7 +355,7 @@ const Approvals = () => {
                       onClick={() => handleViewDetails(issue)}
                       className="relative text-[#6e2f74] hover:text-[#6e2f74] flex items-center group transition-colors duration-200 px-3 py-1.5 -ml-2"
                     >
-                      <FiEye className="mr-2" size={22} color="#6e2f74" />
+                      <IconMapper iconName="Eye" iconSize={22} iconColor="#6e2f74" marginRight={8} />
                       <span className="relative text-sm font-medium">{t('view')}</span>
                       <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#6e2f74] group-hover:w-full transition-all duration-300"></span>
                     </button>
@@ -340,6 +364,17 @@ const Approvals = () => {
               ))}
             </tbody>
           </table>
+          
+          {/* Pagination */}
+          {filteredIssues.length > itemsPerPage && (
+            <div className="flex justify-end mt-4 px-6 py-3 border-t border-gray-200">
+              <SimplePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -368,6 +403,18 @@ const Approvals = () => {
             
             {/* Main Content */}
             <div className="p-6">
+
+              {/* Device ID and Complaint Type */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">{t('deviceId')}</h4>
+                  <p className="mt-1 text-sm font-medium text-gray-900">{selectedIssue.deviceId}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">{t('complaintType')}</h4>
+                  <p className="mt-1 text-sm text-gray-900">{selectedIssue.complaintType}</p>
+                </div>
+              </div>
 
               {/* Attachment Section */}
               {selectedIssue.attachment && (
@@ -460,13 +507,13 @@ const Approvals = () => {
                                 key={blockIndex} 
                                 className={`flex gap-3 ${isStatusUpdate ? 'items-center' : 'items-start'}`}
                               >
-                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
-                                  isStatusUpdate ? 'bg-blue-500' : 'bg-purple-500'
-                                }`}>
+                                <div className="flex-shrink-0">
                                   {isStatusUpdate ? (
-                                    <FiRefreshCw size={16} />
+                                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                                      <IconMapper iconName="RefreshCw" iconSize={16} iconColor="#FFFFFF" />
+                                    </div>
                                   ) : (
-                                    <FiMessageSquare size={16} />
+                                    <IconMapper iconName="MessageSquare" iconSize={20} iconColor="#a169b0" className="mt-1" />
                                   )}
                                 </div>
                                 
@@ -504,7 +551,7 @@ const Approvals = () => {
                 )} 
               
               {/* Approval/Rejection Comments */}
-              {(selectedIssue.status === 'Rejected by DC' || 
+              {(selectedIssue.status === 'Rejected by DC/AC' || 
                 selectedIssue.status === 'Issue approved by Super Admin' ||
                 selectedIssue.status === 'Issue rejected by Super Admin') && (
                 <div className="mt-6 pt-6 border-t border-gray-200">
@@ -514,7 +561,7 @@ const Approvals = () => {
                       .filter(approval => {
                         if (!approval) return false;
                         return (
-                          (selectedIssue.status === 'Rejected by DC' && approval.approvalLevel === 'dc') ||
+                          (selectedIssue.status === 'Rejected by DC/AC' && approval.approvalLevel === 'dc') ||
                           (selectedIssue.status.includes('Super Admin') && approval.approvalLevel === 'superuser')
                         );
                       })
@@ -523,7 +570,7 @@ const Approvals = () => {
                           <div className="flex justify-between items-start">
                             <div>
                               <p className="text-sm font-medium text-gray-700">
-                                {approval.approvalLevel === 'dc' ? 'DC Approval' : 'Super Admin Approval'}
+                                {approval.approvalLevel === 'dc' ? 'DC/AC Approval' : 'Super Admin Approval'}
                               </p>
                               {approval.comment && (
                                 <p className="mt-1 text-sm text-gray-600">
@@ -549,14 +596,6 @@ const Approvals = () => {
                 </div>
               )}
                 
-              {selectedIssue.assignedTo && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">{t('assignedTo')}</p>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {selectedIssue.assignedTo.username} ({selectedIssue.assignedTo.email})
-                    </p>
-                  </div>
-                )}
               </div>
               
               <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end">

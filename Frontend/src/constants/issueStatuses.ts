@@ -3,9 +3,9 @@ export const ISSUE_STATUS = {
   // Initial status when issue is created
   PENDING: 'Pending',
   
-  // DC related statuses
-  DC_APPROVED: 'Approved by DC',
-  DC_REJECTED: 'Rejected by DC',
+  // DC/AC related statuses
+  DC_APPROVED: 'Approved by DC/AC',
+  DC_REJECTED: 'Rejected by DC/AC',
   
   // Super Admin related statuses
   SUPER_ADMIN_APPROVED: 'Approved by Super Admin',
@@ -42,8 +42,8 @@ export const ISSUE_STATUS = {
   getDisplayName: (status: string): string => {
     const statusMap: Record<string, string> = {
       [ISSUE_STATUS.PENDING]: 'Pending',
-      [ISSUE_STATUS.DC_APPROVED]: 'Approved by DC',
-      [ISSUE_STATUS.DC_REJECTED]: 'Rejected by DC',
+      [ISSUE_STATUS.DC_APPROVED]: 'Approved by DC/AC',
+      [ISSUE_STATUS.DC_REJECTED]: 'Rejected by DC/AC',
       [ISSUE_STATUS.SUPER_ADMIN_APPROVED]: 'Approved by Super Admin',
       [ISSUE_STATUS.SUPER_ADMIN_REJECTED]: 'Rejected by Super Admin',
       [ISSUE_STATUS.ASSIGNED]: 'Assigned',

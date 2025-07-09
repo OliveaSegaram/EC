@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiXCircle, FiClock, FiList } from 'react-icons/fi';
+import IconMapper from '../ui/IconMapper';
 import Button from '../ui/buttons/Button';
 
 // Define the Issue interface for type safety
@@ -134,10 +134,9 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
             buttonColor="#3B0043"
             buttonStyle={2}
             textColor="white"
-            iconName="Plus"
+            iconName="Add"
             onClick={handleNewIssue}
-            className="shadow-md hover:shadow-lg transition-shadow"
-            reverseIcons
+            className="flex items-center gap-2 shadow-md hover:shadow-lg transition-shadow"
           />
         </div>
       </div>
@@ -145,42 +144,48 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Total Issues Card */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex items-center space-x-4 hover:shadow-md transition-shadow duration-200">
-          <div className="bg-blue-100 text-blue-600 p-3 rounded-lg">
-            <FiList size={24} />
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">{t('totalIssues')}</h3>
-            <p className="text-2xl font-bold text-gray-800">{totalItems}</p>
-            <p className="text-xs text-gray-400 mt-1">{t('allReportedIssues')}</p>
+        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
+          <div className="flex items-center space-x-4">
+            <div className="text-blue-600">
+              <IconMapper iconName="Dashboard" iconSize={28} />
+            </div>
+            <div>
+              <p className="text-base font-medium text-gray-700">{t('totalIssues')}</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">{totalItems}</p>
+              <p className="text-xs text-gray-400 mt-1">{t('allReportedIssues')}</p>
+            </div>
           </div>
         </div>
 
         {/* Pending Issues Card */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex items-center space-x-4 hover:shadow-md transition-shadow duration-200">
-          <div className="bg-yellow-100 text-yellow-600 p-3 rounded-lg">
-            <FiClock size={24} />
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">{t('pendingIssues')}</h3>
-            <p className="text-2xl font-bold text-gray-800">
-              {issues.filter(issue => issue.status === 'Pending').length}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">{t('awaitingAction')}</p>
+        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
+          <div className="flex items-center space-x-4">
+            <div className="text-amber-600">
+              <IconMapper iconName="Clock" iconSize={28} />
+            </div>
+            <div>
+              <p className="text-base font-medium text-gray-700">{t('pendingIssues')}</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">
+                {issues.filter(issue => issue.status === 'Pending').length}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">{t('awaitingAction')}</p>
+            </div>
           </div>
         </div>
 
         {/* Rejected Issues Card */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex items-center space-x-4 hover:shadow-md transition-shadow duration-200">
-          <div className="bg-red-100 text-red-600 p-3 rounded-lg">
-            <FiXCircle size={24} />
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">{t('rejectedIssues')}</h3>
-            <p className="text-2xl font-bold text-gray-800">
-              {rejectedIssuesCount}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">{t('issuesNotApproved')}</p>
+        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
+          <div className="flex items-center space-x-4">
+            <div className="text-red-600">
+              <IconMapper iconName="XCircle" iconSize={28} />
+            </div>
+            <div>
+              <p className="text-base font-medium text-gray-700">{t('rejectedIssues')}</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">
+                {rejectedIssuesCount}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">{t('issuesNotApproved')}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -272,13 +277,12 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
               </div>
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
-                    <span className="font-medium">
-                      {Math.min(indexOfLastItem, totalItems)}
-                    </span>{' '}
-                    of <span className="font-medium">{totalItems}</span> results
-                  </p>
+                  <IconMapper iconName="XCircle" iconSize={20} className="text-red-500 mr-2" />
+                  Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
+                  <span className="font-medium">
+                    {Math.min(indexOfLastItem, totalItems)}
+                  </span>{' '}
+                  of <span className="font-medium">{totalItems}</span> results
                 </div>
                 <div>
                   <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">

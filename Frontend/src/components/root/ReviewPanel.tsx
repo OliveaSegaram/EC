@@ -1,17 +1,9 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { 
-  FiEye, 
-  FiCheck, 
-  FiX, 
-  FiCalendar, 
-  FiClock,
-  FiPaperclip,
-  FiCheckCircle,
-  FiFilter,
-  FiMessageSquare,
-  FiRefreshCw
-} from 'react-icons/fi';
+import SimplePagination from '../common/SimplePagination';
+import { useSimplePagination } from '../../hooks/useSimplePagination';
+import { useAuth } from '../../provider/AuthProvider';
+import IconMapper from '../ui/IconMapper';
 import { toast } from 'react-toastify';
 import { AppContext } from '../../provider/AppContext';
 
@@ -47,6 +39,15 @@ const ReviewPanel: React.FC = () => {
   const [issues, setIssues] = useState<ReviewIssue[]>([]);
   const [filteredIssues, setFilteredIssues] = useState<ReviewIssue[]>([]);
   const [isConfirming, setIsConfirming] = useState(false);
+  
+  // Pagination
+  const itemsPerPage = 5;
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: paginatedIssues,
+    handlePageChange
+  } = useSimplePagination(filteredIssues, itemsPerPage);
   const [selectedIssue, setSelectedIssue] = useState<ReviewIssue | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [comment, setComment] = useState('');
@@ -65,19 +66,19 @@ const ReviewPanel: React.FC = () => {
       case 'Pending_Review':
         return (
           <span className="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-            <FiClock className="mr-1" /> {t('pendingReview')}
+            <IconMapper iconName="Clock" iconSize={14} className="mr-1" /> {t('pendingReview')}
           </span>
         );
       case 'Resolved':
         return (
           <span className="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-            <FiCheckCircle className="mr-1" /> {t('resolved')}
+            <IconMapper iconName="CheckCircle" iconSize={14} className="mr-1" /> {t('resolved')}
           </span>
         );
       case 'Completed':
         return (
           <span className="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-            <FiCheck className="mr-1" /> {t('completed')}
+            <IconMapper iconName="Check" iconSize={14} className="mr-1" /> {t('completed')}
           </span>
         );
       default:
@@ -89,31 +90,31 @@ const ReviewPanel: React.FC = () => {
     }
   };
 
+  const { token, user } = useAuth();
+  
   const fetchIssues = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('Authentication token not found');
       }
       
-      // Get and verify user data
-      const userData = localStorage.getItem('user');
-      if (!userData) {
+      // Check if user data is available
+      if (!user) {
         throw new Error('User data not found. Please log in again.');
       }
       
-      let user;
-      try {
-        user = JSON.parse(userData);
-        console.log('Current user role:', user.role);
-        
-        // Check if user has required role
-        if (!['super_admin', 'root'].includes(user.role)) {
-          throw new Error(`Access Denied. Your role (${user.role}) does not have permission to access this page.`);
-        }
-      } catch (e) {
-        console.error('Error parsing user data:', e);
-        throw new Error('Invalid user data. Please log in again.');
+      console.log('Current user in ReviewPanel:', user);
+      
+      // Check if user has required role
+      const userRole = user.role?.toLowerCase();
+      console.log('User role in ReviewPanel:', userRole);
+      
+      if (!userRole) {
+        throw new Error('User role not found. Please log in again.');
+      }
+      
+      if (!['super_admin', 'root'].includes(userRole)) {
+        throw new Error(`Access Denied. Your role (${userRole}) does not have permission to access this page.`);
       }
       
       const url = `${backendUrl}/reviews/review`;
@@ -293,7 +294,7 @@ const ReviewPanel: React.FC = () => {
           <div className="relative w-full sm:w-auto">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiFilter className="h-4 w-4 text-gray-400" />
+                <IconMapper iconName="Filter" iconSize={16} className="text-gray-400" />
               </div>
               <select
                 value={statusFilter}
@@ -348,7 +349,7 @@ const ReviewPanel: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              filteredIssues.map((issue) => (
+              paginatedIssues.map((issue) => (
                 <tr key={issue.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{issue.id}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.complaintType || 'N/A'}</td>
@@ -357,17 +358,20 @@ const ReviewPanel: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center">
-                      <FiClock className="mr-1.5 h-4 w-4 text-gray-400" />
+                      <IconMapper iconName="Clock" iconSize={16} className="mr-1.5 text-gray-400" />
                       {new Date(issue.updatedAt).toLocaleString()}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <button
                       onClick={() => { setSelectedIssue(issue); setShowModal(true); }}
-                      className="text-blue-600 hover:text-blue-800"
+                      className="group relative text-[#6e2f74] hover:text-[#4d1a57] transition-colors duration-200"
                       title="View Details"
                     >
-                      <FiEye size={20} color="#6e2f74" />
+                      <div className="flex flex-col items-center">
+                        <IconMapper iconName="Eye" iconSize={24} iconColor="currentColor" className="mb-0.5" />
+                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#6e2f74] group-hover:w-full transition-all duration-200"></span>
+                      </div>
                     </button>
                   </td>
                 </tr>
@@ -375,6 +379,17 @@ const ReviewPanel: React.FC = () => {
             )}
           </tbody>
         </table>
+        
+        {/* Pagination */}
+        {filteredIssues.length > itemsPerPage && (
+          <div className="flex justify-end mt-4 px-6 py-3 border-t border-gray-200">
+            <SimplePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          </div>
+        )}
       </div>
       {/* Modal for issue details */}
       {showModal && selectedIssue && (
@@ -392,7 +407,7 @@ const ReviewPanel: React.FC = () => {
                   className="text-purple-200 hover:text-white focus:outline-none transition-colors duration-200 p-1"
                 >
                   <span className="sr-only">Close</span>
-                  <FiX className="h-5 w-5" />
+                  <IconMapper iconName="X" iconSize={20} iconColor="white" />
                 </button>
               </div>
               <div className="mt-2">
@@ -414,14 +429,14 @@ const ReviewPanel: React.FC = () => {
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">{t('submittedAt')}</h4>
                   <p className="mt-1 text-gray-900 flex items-center">
-                    <FiCalendar className="mr-2" />
+                    <IconMapper iconName="Calendar" iconSize={16} className="mr-2" />
                     {new Date(selectedIssue.submittedAt).toLocaleString()}
                   </p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">{t('lastUpdated')}</h4>
                   <p className="mt-1 text-gray-900 flex items-center">
-                    <FiClock className="mr-2" />
+                    <IconMapper iconName="Clock" iconSize={16} className="mr-2" />
                     {new Date(selectedIssue.updatedAt).toLocaleString()}
                   </p>
                 </div>
@@ -458,12 +473,12 @@ const ReviewPanel: React.FC = () => {
                               className={`flex gap-3 ${isStatusUpdate ? 'items-center' : 'items-start'}`}
                             >
                               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
-                                isStatusUpdate ? 'bg-blue-500' : 'bg-purple-500'
+                                isStatusUpdate ? 'bg-blue-500' : 'bg-[#7b3582]'
                               }`}>
                                 {isStatusUpdate ? (
-                                  <FiRefreshCw size={16} />
+                                  <IconMapper iconName="RefreshCw" iconSize={16} iconColor="white" />
                                 ) : (
-                                  <FiMessageSquare size={16} />
+                                  <IconMapper iconName="MessageSquare" iconSize={16} iconColor="white" />
                                 )}
                               </div>
                               
@@ -508,7 +523,7 @@ const ReviewPanel: React.FC = () => {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <FiMessageSquare className="mx-auto h-10 w-10 text-gray-300" />
+                        <IconMapper iconName="MessageSquare" iconSize={40} className="mx-auto text-gray-300" />
                         <p className="mt-2 text-sm text-gray-500">{t('noActivityYet')}</p>
                         <p className="text-xs text-gray-400 mt-1">{t('updatesWillAppearHere')}</p>
                       </div>
@@ -524,10 +539,10 @@ const ReviewPanel: React.FC = () => {
                         : `${backendUrl}${selectedIssue.attachment.startsWith('/') ? '' : '/'}${selectedIssue.attachment}`}
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      className="mt-2 inline-flex items-center px-4 py-2 border border-[#6e2f74] text-sm font-medium rounded-md text-[#6e2f74] bg-white hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
                     >
-                      <FiPaperclip className="-ml-1 mr-2 h-5 w-5 text-gray-400" />
-                      {t('viewAttachment')}
+                      <IconMapper iconName="Paperclip" iconSize={16} className="mr-2 text-[#6e2f74]" />
+                      <span className="font-medium">{t('viewAttachment')}</span>
                     </a>
                   </div>
                 )}
@@ -537,10 +552,10 @@ const ReviewPanel: React.FC = () => {
                 <div className="flex justify-center">
                   <button
                     onClick={() => handleConfirm(selectedIssue.id)}
-                    className={`flex items-center justify-center bg-gradient-to-r from-purple-600 to-purple-800 text-white hover:from-purple-700 hover:to-purple-900 rounded-lg transition-all shadow-md hover:shadow-lg py-2.5 px-8 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    className={`flex items-center justify-center bg-[#4d1a57] hover:bg-[#3a1340] text-white rounded-lg transition-all py-2.5 px-8 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`}
                     disabled={isConfirming}
                   >
-                    <FiCheck className="mr-2 h-5 w-5" />
+                    <IconMapper iconName="Check" iconSize={18} className="mr-2" />
                     <span className="font-medium">{isConfirming ? t('confirming') : t('confirmReview')}</span>
                   </button>
                 </div>

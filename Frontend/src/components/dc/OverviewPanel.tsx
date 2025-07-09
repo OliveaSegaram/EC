@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiXCircle, FiEye, FiList, FiAlertTriangle, FiClock } from 'react-icons/fi'; 
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
+import IconMapper from '../ui/IconMapper';
 
 interface Issue {
   id: number;
@@ -69,11 +69,11 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Total Issues Card */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex items-center space-x-4 hover:shadow-md transition-shadow duration-200">
-          <div className="bg-blue-100 text-blue-600 p-3 rounded-lg">
-            <FiList size={24} />
+          <div className="bg-blue-100 p-3 rounded-lg flex-shrink-0">
+            <IconMapper iconName="File" iconSize={24} iconColor="#2563eb" />
           </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">{t('totalIssues')}</h3>
+          <div className="min-w-0">
+            <h3 className="text-base font-medium text-gray-800">{t('totalIssues')}</h3>
             <p className="text-2xl font-bold text-gray-800">{totalIssues}</p>
             <p className="text-xs text-gray-400 mt-1">{t('allReportedIssues')}</p>
           </div>
@@ -81,11 +81,11 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
 
         {/* Pending Issues Card */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex items-center space-x-4 hover:shadow-md transition-shadow duration-200">
-          <div className="bg-yellow-100 text-yellow-600 p-3 rounded-lg">
-            <FiClock size={24} />
+          <div className="bg-yellow-100 p-3 rounded-lg">
+            <IconMapper iconName="Clock" iconSize={24} iconColor="#d97706" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">{t('pendingIssues')}</h3>
+            <h3 className="text-base font-medium text-gray-800">{t('pendingIssues')}</h3>
             <p className="text-2xl font-bold text-yellow-600">{pendingIssues.length}</p>
             <p className="text-xs text-gray-400 mt-1">{t('awaitingReview')}</p>
           </div>
@@ -93,11 +93,11 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
 
         {/* Rejected Issues Card */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex items-center space-x-4 hover:shadow-md transition-shadow duration-200">
-          <div className="bg-red-100 text-red-600 p-3 rounded-lg">
-            <FiXCircle size={24} />
+          <div className="bg-red-100 p-3 rounded-lg">
+            <IconMapper iconName="XCircle" iconSize={24} iconColor="#dc2626" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">{t('rejectedIssues')}</h3>
+            <h3 className="text-base font-medium text-gray-800">{t('rejectedIssues')}</h3>
             <p className="text-2xl font-bold text-red-600">{rejectedIssues.length}</p>
             <p className="text-xs text-gray-400 mt-1">{t('requiresAttention')}</p>
           </div>
@@ -109,7 +109,8 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
           <h3 className="text-xl font-semibold text-gray-800">{t('pendingIssues')}</h3>
           <div className="flex space-x-2">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              <FiAlertTriangle className="mr-1" /> {t('highPriority')}: {highPriorityCount}
+              <IconMapper iconName="AlertTriangle" iconSize={14} iconColor="#2563eb" className="mr-1" />
+              {t('highPriority')}: {highPriorityCount}
             </span>
             
           </div>
@@ -156,13 +157,15 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
                     </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      issue.priorityLevel === 'High' ? 'bg-red-100 text-red-800' :
-                      issue.priorityLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
-                      {issue.priorityLevel}
-                    </span>
+                    <div className="flex items-center">
+                      <span className={`px-2 py-0.5 text-[12px] font-medium rounded-full ${
+                        issue.priorityLevel === 'High' ? 'bg-red-100 text-red-800' :
+                        issue.priorityLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {issue.priorityLevel}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     {new Date(issue.submittedAt).toLocaleDateString()}
@@ -177,7 +180,7 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({
                         className="text-[#6e2f74] hover:bg-purple-50 p-1.5 rounded-full transition-all duration-200"
                         title={t('viewDetails')}
                       >
-                        <FiEye className="w-5 h-5" color="#6e2f74" />
+                        <IconMapper iconName="Eye" iconSize={20} iconColor="#6e2f74" />
                       </button>
                     </div>
                   </td>
