@@ -73,7 +73,7 @@ const Register = () => {
     confirmPassword: string;
     role: string;
     districtId: string;
-    skillId: string[]; // Changed to array of strings
+    skillIds: string[]; // Changed from skillId to skillIds
     description: string;
     attachment: File | null;
   }
@@ -86,10 +86,11 @@ const Register = () => {
     confirmPassword: '',
     role: '',
     districtId: '',
-    skillId: [],
+    skillIds: [], // Changed from skillId to skillIds
     description: '',
     attachment: null
   });
+  const [fileTouched, setFileTouched] = useState(false);
 
   const [, setShowSkills] = useState(false); 
 
@@ -104,8 +105,8 @@ const Register = () => {
       const newFormData = {
         ...prev,
         [name]: value,
-        // Reset skillId when role changes to non-technical
-        ...(name === 'role' && value !== 'technical_officer' && { skillId: [] })
+        // Reset skillIds when role changes to non-technical
+        ...(name === 'role' && value !== 'technical_officer' && { skillIds: [] })
       };
 
       // If role is changed to a head office role, set district to Colombo Head Office
@@ -130,16 +131,16 @@ const Register = () => {
   const handleSkillChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value, checked } = e.target;
     setFormData(prev => {
-      const currentSkills = Array.isArray(prev.skillId) ? [...prev.skillId] : [];
+      const currentSkills = Array.isArray(prev.skillIds) ? [...prev.skillIds] : [];
       
       if (checked) {
         // Add skill if checked and not already in the array
         if (!currentSkills.includes(value)) {
-          return { ...prev, skillId: [...currentSkills, value] };
+          return { ...prev, skillIds: [...currentSkills, value] };
         }
       } else {
         // Remove skill if unchecked
-        return { ...prev, skillId: currentSkills.filter(id => id !== value) };
+        return { ...prev, skillIds: currentSkills.filter(id => id !== value) };
       }
       
       return prev;
@@ -148,14 +149,28 @@ const Register = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    setFormData({ ...formData, attachment: file });
+    setFormData(prev => ({ ...prev, attachment: file }));
+    if (!fileTouched) setFileTouched(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check file attachment
+    if (!formData.attachment) {
+      setFileTouched(true);
+      return;
+    }
+    
+    // Check if form is valid using HTML5 validation
+    const form = e.target as HTMLFormElement;
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
 
     const validateForm = () => {
-      const { nic, password, confirmPassword, role, skillId, districtId } = formData;
+      const { nic, password, confirmPassword, role, skillIds, districtId } = formData;
       
       const requiredFields = ['nic', 'username', 'email', 'password', 'confirmPassword', 'role', 'districtId'];
       for (const field of requiredFields) {
@@ -173,7 +188,7 @@ const Register = () => {
       }
 
       if (role === 'technical_officer') {
-        if (!skillId || (Array.isArray(skillId) && skillId.length === 0)) {
+        if (!skillIds || (Array.isArray(skillIds) && skillIds.length === 0)) {
           toast.error('Please select at least one skill');
           return false;
         }
@@ -206,7 +221,7 @@ const Register = () => {
         password: formData.password,
         role: formData.role,
         districtId: formData.districtId,
-        skillId: formData.role === 'technical_officer' ? formData.skillId : '1',
+        skillIds: formData.role === 'technical_officer' ? formData.skillIds : ['1'],
         description: formData.description
       };
 
@@ -231,10 +246,11 @@ const Register = () => {
       // Add skillIds (use default '1' for non-technical roles)
       if (formData.role === 'technical_officer') {
         // Convert array of skill IDs to comma-separated string
-        const skillIds = Array.isArray(formData.skillId) ? formData.skillId.join(',') : '';
-        payload.append('skillId', skillIds);
+        const skillIds = Array.isArray(formData.skillIds) ? formData.skillIds.join(',') : '';
+        payload.append('skillIds', skillIds);
       } else {
-        // For non-technical roles, we don't need to send skillId as the backend will handle it
+        // For non-technical roles, set default skill ID
+        payload.append('skillIds', '1');
       }
 
       // Add description if provided
@@ -274,7 +290,7 @@ const Register = () => {
         throw new Error(err.message || 'Registration failed');
       }
 
-      toast.success('Registration submitted! Wait for root approval.');
+      toast.success('Registration submitted! Wait for super admin approval.');
       navigate('/login');
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -332,7 +348,7 @@ const Register = () => {
           <h2 className="text-center text-2xl font-bold text-gray-800 mb-2">{t('Register')}</h2>
           <p className="text-center text-gray-500 text-sm mb-6">{t('Create a new account')}</p>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <input
               name="nic"
               type="text"
@@ -340,14 +356,21 @@ const Register = () => {
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 transition-colors"
               placeholder={t('NIC Number')}
+              pattern="^(\d{12}|\d{9}[vVxX])$"
+              title="Enter valid NIC (12 digits or 9 digits + v/V/x/X)"
               required
             />
 
             <input
               name="username"
               placeholder={t('Username')}
+              value={formData.username}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 transition-colors"
+              minLength={3}
+              maxLength={30}
+              pattern="[A-Za-z0-9_]+"
+              title="Only letters, numbers, and _"
               required
             />
 
@@ -355,8 +378,11 @@ const Register = () => {
               name="email"
               type="email"
               placeholder={t('Email')}
+              value={formData.email}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 transition-colors"
+              pattern="[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$"
+              title="Enter a valid email"
               required
             />
 
@@ -364,8 +390,11 @@ const Register = () => {
               name="password"
               type="password"
               placeholder={t('Password')}
+              value={formData.password}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 transition-colors"
+              minLength={8}
+              title="Min 8 characters"
               required
             />
 
@@ -373,8 +402,11 @@ const Register = () => {
               name="confirmPassword"
               type="password"
               placeholder={t('Confirm Password')}
+              value={formData.confirmPassword}
               onChange={handleChange}
               className="w-full border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 px-4 py-2 rounded-lg mb-3 transition-colors"
+              minLength={8}
+              title="Passwords must match"
               required
             />
             <p className="text-sm text-gray-600 mb-1 ml-1">
@@ -425,8 +457,8 @@ const Register = () => {
                 <p className="text-sm text-gray-600 mb-2 ml-1">{t('Select your skills')} *</p>
                 <div className="grid grid-cols-2 gap-2">
                   {skills.map(skill => {
-                    const isChecked = Array.isArray(formData.skillId) 
-                      ? formData.skillId.includes(skill.id.toString())
+                    const isChecked = Array.isArray(formData.skillIds) 
+                      ? formData.skillIds.includes(skill.id.toString())
                       : false;
                       
                     return (
@@ -444,7 +476,7 @@ const Register = () => {
                     );
                   })}
                 </div>
-                {formData.role === 'technical_officer' && (!formData.skillId || formData.skillId.length === 0) && (
+                {formData.role === 'technical_officer' && (!formData.skillIds || formData.skillIds.length === 0) && (
                   <p className="mt-1 text-sm text-red-500">{t('Please select at least one skill')}</p>
                 )}
               </div>
@@ -465,15 +497,22 @@ const Register = () => {
 
             <div className="relative mb-3">
               <label className="block w-full py-2 px-4 rounded-lg bg-purple-100 text-purple-800 font-medium text-center cursor-pointer hover:bg-purple-200 transition-colors">
-                {t('Choose File')}
+                {formData.attachment ? formData.attachment.name : t('Choose File')}
                 <input
                   type="file"
                   name="attachment"
                   onChange={handleFileChange}
                   className="hidden"
                   required
+                  onInvalid={(e) => {
+                    e.preventDefault();
+                    setFileTouched(true);
+                  }}
                 />
               </label>
+              {fileTouched && !formData.attachment && (
+                <p className="mt-1 text-sm text-red-500">File is required</p>
+              )}
               {formData.attachment && (
                 <span className="block mt-1 text-sm text-gray-600 text-center">
                   {formData.attachment.name}

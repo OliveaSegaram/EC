@@ -6,7 +6,6 @@ import { toast } from 'react-toastify';
 
 const ForgotPassword: React.FC = () => {
   const [nic, setNic] = useState('');
-  // Removed showSuccess state as we'll use toast for success messages
   const [loading, setLoading] = useState(false);
   const { backendUrl } = useContext(AppContext);
   const { t } = useTranslation();
@@ -24,7 +23,7 @@ const ForgotPassword: React.FC = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to send email');
       toast.success('Password reset link has been sent to your email.');
-      setNic(''); // Clear the input field
+      setNic(''); 
     } catch (err: any) {
       toast.error(err.message);
     } finally {

@@ -67,7 +67,7 @@ const RootDashboard = () => {
 
   return (
     <Layout 
-      title="Root Dashboard"
+      title="Super Admin Dashboard"
       dashboardType="root"
       selectedIndex={activeViewIndex}
       onSelectedIndexChange={handleViewChange}

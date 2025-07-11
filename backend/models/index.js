@@ -28,7 +28,6 @@ const Issue = require('./issue')(sequelize, DataTypes);
 
 // Define relationships
 User.belongsTo(District, { foreignKey: 'districtId' });
-User.belongsTo(Skill, { foreignKey: 'skillId' });
 User.belongsTo(Role, { foreignKey: 'roleId' });
 
 // Add models to db object

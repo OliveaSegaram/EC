@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppContext } from '../provider/AppContext';
 import { toast } from 'react-toastify';
+import Button from '../components/ui/buttons/Button';
 
 const ResetPassword: React.FC = () => {
   const { token } = useParams();
@@ -80,13 +81,14 @@ const ResetPassword: React.FC = () => {
 
 
 
-            <button
-              type="submit"
-              className={`w-full py-2 bg-purple-700 text-white rounded hover:bg-purple-800 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+            <Button
+              buttonType="submit"
+              buttonText={t('Update Password')}
+              buttonColor="#5B005B"
+              buttonStyle={2}
+              className="w-full"
               disabled={isSubmitting}
-            >
-              {t('Update Password')}
-            </button>
+            />
           </form>
         )}
       </div>

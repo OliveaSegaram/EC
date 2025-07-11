@@ -1,5 +1,6 @@
 
 import { Routes, Route, useParams } from 'react-router-dom';
+import { useAuth } from '../provider/AuthProvider';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import ProtectedRoute from './ProtectedRoute.tsx';
@@ -32,8 +33,15 @@ const DashboardLoader = ({ role }: { role: string }) => {
 
 
 const RoleBasedDashboard = () => {
-  const { role } = useParams();
-  return <DashboardLoader role={role || ''} />;
+  const { user } = useAuth();
+  const { role: roleFromUrl } = useParams();
+  
+  // Debug log to check user role vs URL role
+  console.log('RoleBasedDashboard - User role from auth:', user?.role);
+  console.log('RoleBasedDashboard - Role from URL:', roleFromUrl);
+  
+  // Use the role from auth context instead of URL to prevent role spoofing
+  return <DashboardLoader role={user?.role || ''} />;
 };
 
 // Routes definition

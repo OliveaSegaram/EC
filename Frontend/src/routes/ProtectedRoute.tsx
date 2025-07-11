@@ -1,28 +1,37 @@
-import { Navigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
+import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import { useAuth } from '../provider/AuthProvider';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles: string[];
 }
 
-interface DecodedToken {
-  role: string;
-  [key: string]: any; 
-}
-
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-  const token = localStorage.getItem('token');
-  if (!token) return <Navigate to="/auth" />;
-
-  try {
-    const { role } = jwtDecode<DecodedToken>(token);
-    if (!allowedRoles.includes(role)) return <Navigate to="/unauthorized" />;
-    return <>{children}</>;
-  } catch {
-    return <Navigate to="/auth" />;
+  const { token, user, isLoading } = useAuth();
+  const location = useLocation();
+  
+  // Show nothing while loading
+  if (isLoading) {
+    return null;
   }
+
+  // If no token, redirect to login with return URL
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // If we have a token but no user data yet, we're still initializing
+  if (!user) {
+    return null;
+  }
+
+  // Check if user's role is allowed
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to="/unauthorized" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
 };
 
 export default ProtectedRoute;

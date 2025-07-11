@@ -5,12 +5,13 @@ import type { ReactNode } from 'react';
 export interface UserData {
   username: string;
   role: string;
-  // Add other user properties as needed
+  
 }
 
 interface AuthContextType {
   token: string | null;
   user: UserData | null;
+  isLoading: boolean;
   setToken: (token: string | null, userData?: UserData) => void;
 }
 
@@ -21,42 +22,54 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [token, setTokenState] = useState<string | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Sync token and user data with localStorage on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedToken) {
-      setTokenState(storedToken);
-    }
-    
-    if (storedUser) {
+    const initializeAuth = () => {
       try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Failed to parse user data:', e);
+        const storedToken = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+        
+        if (storedToken && storedUser) {
+          setTokenState(storedToken);
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (error) {
+        console.error('Failed to initialize auth:', error);
+        // Clear invalid auth data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+
+    initializeAuth();
   }, []);
 
   // Update localStorage whenever token or user changes
   const setToken = (newToken: string | null, userData?: UserData) => {
-    setTokenState(newToken);
-    
     if (newToken && userData) {
+      setTokenState(newToken);
       setUser(userData);
       localStorage.setItem('token', newToken);
       localStorage.setItem('user', JSON.stringify(userData));
     } else {
+      setTokenState(null);
       setUser(null);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
   };
 
+  // Only render children when we're done loading
+  if (isLoading) {
+    return null; // or a loading spinner
+  }
+
   return (
-    <AuthContext.Provider value={{ token, user, setToken }}>
+    <AuthContext.Provider value={{ token, user, isLoading, setToken }}>
       {children}
     </AuthContext.Provider>
   );

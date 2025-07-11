@@ -98,21 +98,8 @@ module.exports = (sequelize, DataTypes) => {
     });
   
     
-    // Explicitly define the relationship to prevent any automatic inclusion of skillId
-    User.belongsToMany(models.Skill, {
-      through: 'UserSkills',
-      foreignKey: 'userId',
-      otherKey: 'skillId',
-      as: 'skills'
-    });
+    // Skill association is now handled through the skillIds field
   };
-  
-  // Add a default scope to exclude any problematic fields
-  User.addScope('defaultScope', {
-    attributes: {
-      exclude: ['skillId'] // Explicitly exclude skillId if it's still being referenced
-    }
-  }, { override: true });
 
   return User;
 

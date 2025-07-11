@@ -312,24 +312,15 @@ const IssuePanel: FC = (): ReactElement => {
     }
   };
 
-  // openRejectCommentModal is now defined above with proper null checks
-  // and toast notifications are handled in the component rendering
 
   // Helper functions for styling
   const getStatusColor = (status: string): string => {
-    switch (status) {
-      case ISSUE_STATUS.PENDING:
-        return 'bg-yellow-100 text-yellow-800';
-      case ISSUE_STATUS.DC_APPROVED:
-        return 'bg-blue-100 text-blue-800';
-      case ISSUE_STATUS.DC_REJECTED:
-        return 'bg-red-100 text-red-800';
-      case ISSUE_STATUS.SUPER_ADMIN_APPROVED:
-        return 'bg-green-100 text-green-800';
-      case ISSUE_STATUS.SUPER_ADMIN_REJECTED:
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+    // Use the status color from the ISSUE_STATUS constants if available
+    try {
+      return ISSUE_STATUS.getStatusColor(status);
+    } catch (e) {
+      console.warn(`No color mapping found for status: ${status}`);
+      return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -352,18 +343,29 @@ const IssuePanel: FC = (): ReactElement => {
   , [issues, statusFilter]);
 
   // Get unique statuses for filter options
-  const statusOptions = React.useMemo(() => [
-    { value: 'all', label: t('allIssues') },
-    { value: ISSUE_STATUS.PENDING, label: t('pending') },
-    { value: ISSUE_STATUS.DC_APPROVED, label: t('DC/AC Approved') },
-    { value: ISSUE_STATUS.DC_REJECTED, label: t('DC/AC Rejected') },
-    { value: ISSUE_STATUS.SUPER_ADMIN_APPROVED, label: t('approvedByAdmin') },
-    { value: ISSUE_STATUS.SUPER_ADMIN_REJECTED, label: t('rejectedByAdmin') },
-  ].filter(option => {
+  const statusOptions = React.useMemo(() => {
+    const allStatusOptions = [
+      { value: 'all', label: t('allIssues') },
+      { value: ISSUE_STATUS.PENDING, label: t('pending') },
+      { value: ISSUE_STATUS.DC_APPROVED, label: t('DC/AC Approved') },
+      { value: ISSUE_STATUS.DC_REJECTED, label: t('DC/AC Rejected') },
+      { value: ISSUE_STATUS.SUPER_ADMIN_APPROVED, label: t('approvedByAdmin') },
+      { value: ISSUE_STATUS.SUPER_ADMIN_REJECTED, label: t('rejectedByAdmin') },
+      { value: ISSUE_STATUS.UNDER_PROCUREMENT, label: t('underProcurement') },
+      { value: ISSUE_STATUS.ASSIGNED, label: t('assigned') },
+      { value: ISSUE_STATUS.IN_PROGRESS, label: t('inProgress') },
+      { value: ISSUE_STATUS.RESOLVED, label: t('resolved') },
+      { value: ISSUE_STATUS.COMPLETED, label: t('completed') },
+      { value: ISSUE_STATUS.REOPENED, label: t('reopened') },
+      { value: ISSUE_STATUS.ADD_TO_PROCUREMENT, label: t('addToProcurement') }
+    ];
+
     // Only show statuses that exist in the current issues
-    if (option.value === 'all') return true;
-    return issues.some(issue => issue.status === option.value);
-  }), [issues, t]);
+    return allStatusOptions.filter(option => {
+      if (option.value === 'all') return true;
+      return issues.some(issue => issue.status === option.value);
+    });
+  }, [issues, t]);
 
   // Group issues by date
   const sortedAndGroupedIssues = React.useMemo(() => {

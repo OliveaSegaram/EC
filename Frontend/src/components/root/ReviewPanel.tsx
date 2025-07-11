@@ -548,18 +548,20 @@ const ReviewPanel: React.FC = () => {
                 )}
               </div>
               
-              <div className="mt-6 pt-3 border-t border-gray-200">
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => handleConfirm(selectedIssue.id)}
-                    className={`flex items-center justify-center bg-[#4d1a57] hover:bg-[#3a1340] text-white rounded-lg transition-all py-2.5 px-8 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`}
-                    disabled={isConfirming}
-                  >
-                    <IconMapper iconName="Check" iconSize={18} className="mr-2" />
-                    <span className="font-medium">{isConfirming ? t('confirming') : t('confirmReview')}</span>
-                  </button>
+              {selectedIssue.status !== 'Completed' && (
+                <div className="mt-6 pt-3 border-t border-gray-200">
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => handleConfirm(selectedIssue.id)}
+                      className={`flex items-center justify-center bg-[#4d1a57] hover:bg-[#3a1340] text-white rounded-lg transition-all py-2.5 px-8 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`}
+                      disabled={isConfirming}
+                    >
+                      <IconMapper iconName="Check" iconSize={18} className="mr-2" />
+                      <span className="font-medium">{isConfirming ? t('confirming') : t('confirmReview')}</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

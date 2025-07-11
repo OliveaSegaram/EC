@@ -26,13 +26,23 @@ const register = async (req, res) => {
       then: Joi.number().integer().required(),
       otherwise: Joi.number().integer().optional()
     }),
+    // Support both skillId and skillIds during transition
     skillId: Joi.when('role', {
       is: 'technical_officer',
       then: Joi.alternatives().try(
         Joi.number().integer(),
         Joi.string(),
         Joi.array().items(Joi.number().integer())
-      ).required(),
+      ),
+      otherwise: Joi.any().optional()
+    }),
+    skillIds: Joi.when('role', {
+      is: 'technical_officer',
+      then: Joi.alternatives().try(
+        Joi.number().integer(),
+        Joi.string(),
+        Joi.array().items(Joi.number().integer())
+      ),
       otherwise: Joi.any().optional()
     }),
     description: Joi.string().allow('').optional()
@@ -45,7 +55,7 @@ const register = async (req, res) => {
   }
 
   try {
-    let { nic, username, email, password, role, description, districtId, skillId } = req.body;
+    let { nic, username, email, password, role, description, districtId, skillIds } = req.body;
     
     // For subject_clerk and dc, verify district exists
     // For other roles, find Colombo Head Office district
@@ -68,13 +78,16 @@ const register = async (req, res) => {
     // Process skill IDs first since we need them for both new and updated users
     let skillIdsValue = [];
     if (role === 'technical_officer') {
-      // Convert skillId to an array if it's a string (comma-separated) or a single number
-      if (typeof skillId === 'string') {
-        skillIdsValue = skillId.split(',').map(id => id.trim());
-      } else if (Array.isArray(skillId)) {
-        skillIdsValue = skillId;
-      } else if (skillId) {
-        skillIdsValue = [skillId];
+      // Use skillIds if provided, otherwise fall back to skillId for backward compatibility
+      const skillInput = skillIds || skillId;
+      
+      // Convert skill input to an array if it's a string (comma-separated) or a single number
+      if (typeof skillInput === 'string') {
+        skillIdsValue = skillInput.split(',').map(id => id.trim());
+      } else if (Array.isArray(skillInput)) {
+        skillIdsValue = skillInput;
+      } else if (skillInput) {
+        skillIdsValue = [skillInput];
       }
 
       if (skillIdsValue.length === 0) {
@@ -126,9 +139,9 @@ const register = async (req, res) => {
         description,
         districtId,
         skillIds: skillIdsValue.join(','),
-        status: 'pending', // Reset status to pending
+        status: 'pending', 
         isVerified: false,
-        rejectionReason: previousRejectionReason, // Keep the old rejection reason
+        rejectionReason: previousRejectionReason, 
         attachment: req.file ? req.file.path : null
       });
 
@@ -199,27 +212,41 @@ const register = async (req, res) => {
     for (const id of skillIdsValue) {
       }
 
-    // Auto-approve the user but keep the rejection reason for reference
-    user.status = 'approved';
-    user.isVerified = true;
+    // Set user as pending approval by default
+    user.status = 'pending';
+    user.isVerified = false;
     await user.save();
 
-    // Get the updated user with all fields including rejectionReason
+    // Get the updated user with all fields
     const updatedUser = await User.findByPk(user.id, {
       attributes: [
         'id', 'username', 'email', 'status', 'rejectionReason',
-        'nic', 'description', 'attachment', 'createdAt', 'updatedAt'
+        'nic', 'description', 'attachment', 'createdAt', 'updatedAt', 'skillIds'
       ],
       include: [
         { model: Role, attributes: ['id', 'name'] },
-        { model: District, as: 'district', attributes: ['id', 'name'] },
-        { model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } }
+        { model: District, as: 'district', attributes: ['id', 'name'] }
       ]
     });
 
+    // Get skill names for the response
+    const userSkillIds = user.skillIds || [];
+    const skills = [];
+    for (const id of userSkillIds) {
+      const skill = await Skill.findByPk(id);
+      if (skill) {
+        skills.push({ id: skill.id, name: skill.name });
+      }
+    }
+
+    const userResponse = {
+      ...updatedUser.get({ plain: true }),
+      skills: skills
+    };
+
     res.status(201).json({ 
-      message: "Registration successful. You can now log in.",
-      user: updatedUser
+      message: "Registration submitted successfully. Please wait for admin approval.",
+      user: userResponse
     });
   } catch (err) {
     console.error(err);
@@ -265,7 +292,7 @@ const login = async (req, res) => {
       token, 
       role: user.Role.name,
       userId: user.id,
-      username: user.username, // Include the username in the response
+      username: user.username, 
       district: user.district
     });
   } catch (err) {
@@ -414,7 +441,9 @@ const getUserProfile = async (req, res) => {
       include: [
         { model: Role, attributes: ['name'] }
       ],
-      attributes: { exclude: ['password', 'resetToken', 'resetTokenExpiry'] }
+      attributes: { 
+        exclude: ['password', 'resetToken', 'resetTokenExpiry'] 
+      }
     });
 
     if (!user) {
@@ -430,8 +459,19 @@ const getUserProfile = async (req, res) => {
       });
     }
     
+    // Get skill names for the response
+    const userSkillIds = user.skillIds || [];
+    const skills = [];
+    for (const id of userSkillIds) {
+      const skill = await Skill.findByPk(id);
+      if (skill) {
+        skills.push({ id: skill.id, name: skill.name });
+      }
+    }
+    
     const userData = user.get({ plain: true });
     userData.district = district;
+    userData.skills = skills;
     // Also include districtId at the root level for easier access
     userData.districtId = user.districtId;
     
@@ -439,10 +479,11 @@ const getUserProfile = async (req, res) => {
       id: userData.id, 
       username: userData.username, 
       district: district?.name,
-      districtId: user.districtId 
+      districtId: user.districtId,
+      skillCount: skills.length
     });
 
-    // Return the user data with district
+    // Return the user data with district and skills
     res.json(userData);
   } catch (error) {
     console.error('Error fetching user profile:', error);

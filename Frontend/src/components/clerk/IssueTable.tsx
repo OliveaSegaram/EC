@@ -29,9 +29,6 @@ interface IssueTableProps {
   setDeleteConfirm: (confirm: { open: boolean; issue: Issue | null }) => void;
   getStatusColor: (status: string) => string;
   getPriorityColor: (priority: string) => string;
-  currentPage: number;
-  setCurrentPage: (page: number) => void;
-  itemsPerPage: number;
   fetchIssues: () => Promise<void>;
 }
 

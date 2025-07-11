@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaMapPin } from 'react-icons/fa';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import { AppContext } from '../../provider/AppContext';
 import { toast } from 'react-toastify';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
@@ -11,7 +12,8 @@ import IssueDetails from '../../components/dc/IssueDetails';
 import RejectCommentModal from '../../components/dc/RejectCommentModal';
 import OverviewPanel from '../../components/dc/OverviewPanel';
 import Layout from '../../components/layout/Layout';
-
+import SimplePagination from '../../components/common/SimplePagination';
+import { useSimplePagination } from '../../hooks/useSimplePagination';
 interface Issue {
   id: number;
   deviceId: string;
@@ -32,6 +34,8 @@ const DCACDashboard = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'issues'>('overview');
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const itemsPerPage = 10; // Number of items per page
+  const { currentPage, totalPages, paginatedItems, handlePageChange } = useSimplePagination(issues, itemsPerPage);
   const [showModal, setShowModal] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentIssue, setCommentIssue] = useState<Issue | null>(null);
@@ -40,6 +44,7 @@ const DCACDashboard = () => {
   const [userDistrictId, setUserDistrictId] = useState<string>('');
   //const [username, setUsername] = useState<string>('');
   const { backendUrl } = useContext(AppContext);
+  const { t } = useTranslation();
   
   // Handle sidebar selection
   const handleSidebarSelect = (index: number) => {
@@ -102,6 +107,7 @@ const DCACDashboard = () => {
     } catch (error) {
       console.error('Error fetching user profile:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
+        toast.error(t('sessionExpired'));
         navigate('/login');
       }
     }
@@ -259,15 +265,15 @@ const DCACDashboard = () => {
         )
       );
       
-      toast.success('Issue approved successfully');
+      toast.success(t('issueApprovedSuccessfullt'));
       
       // Refresh issues to get the latest data without showing success toast
       await fetchIssues(false);
     } catch (error) {
       console.error('Error approving issue:', error);
       const errorMessage = axios.isAxiosError(error)
-        ? (error.response?.data?.message || 'Failed to approve issue')
-        : 'An unexpected error occurred';
+        ? (error.response?.data?.message || t('Failed to approve issue'))
+        : t('unexpectedError');
 
       toast.error(errorMessage);
 
@@ -279,7 +285,7 @@ const DCACDashboard = () => {
 
   const handleRejectSubmit = async (issueId: number) => {
     if (!rejectComment.trim()) {
-      toast.error('Please provide a reason for rejection');
+      toast.error(t('Please provide a reason for rejection'));
       return;
     }
 
@@ -306,13 +312,13 @@ const DCACDashboard = () => {
       setShowCommentModal(false);
       setRejectComment('');
       setCommentIssue(null);
-      toast.success('Issue rejected successfully');
+      toast.success(t('Issue rejected successfully'));
       
       // Refresh issues to get the latest data without showing success toast
       await fetchIssues(false);
     } catch (error) {
       console.error('Error rejecting issue:', error);
-      toast.error('Failed to reject issue');
+      toast.error(t('Failed to reject issue'));
     }
   };
   
@@ -332,25 +338,44 @@ const DCACDashboard = () => {
   };*/}
 
   const getStatusColor = (status: string) => {
-    const statusLower = status.toLowerCase();
-    
-    // Handle all rejected status variations
-    if (statusLower.includes('reject') || statusLower.includes('decline')) {
-      return 'bg-red-100 text-red-800';
-    }
-    
-    // Handle other statuses
-    switch (status) {
-      case 'Pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Issue approved by DC':
-        return 'bg-blue-100 text-blue-800';
-      case 'Issue approved by Super Admin':
-        return 'bg-purple-100 text-purple-800';
-      case 'Issue assigned by Super User':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+    // Use the status color from the ISSUE_STATUS constants if available
+    try {
+      return ISSUE_STATUS.getStatusColor(status);
+    } catch (e) {
+      console.warn(`No color mapping found for status: ${status}`);
+      // Fallback to legacy status handling for backward compatibility
+      const statusLower = status.toLowerCase();
+
+      if (statusLower.includes('reject') || statusLower.includes('decline')) {
+        return 'bg-red-100 text-red-800';
+      }
+
+      // If not found in constants, use the old switch cases as fallback
+      switch (status) {
+        case 'Pending':
+        case 'Pending Approval':
+          return 'bg-yellow-100 text-yellow-800';
+        case 'DC Approved':
+        case 'Issue approved by DC':
+        case 'Super User Approved':
+        case 'Super Admin Approved':
+          return 'bg-green-100 text-green-800';
+        case 'Assigned to Technician':
+        case 'In Progress':
+        case 'Under Repair':
+          return 'bg-blue-100 text-blue-800';
+        case 'Rejected':
+        case 'Rejected by DC':
+        case 'Issue rejected by Super Admin':
+          return 'bg-red-100 text-red-800';
+        case 'Completed':
+        case 'Resolved':
+          return 'bg-purple-100 text-purple-800';
+        case 'Closed':
+          return 'bg-gray-100 text-gray-800';
+        default:
+          return 'bg-gray-100 text-gray-800';
+      }
     }
   };
 
@@ -371,14 +396,14 @@ const DCACDashboard = () => {
 
   return (
     <Layout 
-      title="DC/AC Dashboard"
+      title={t('dcAcDashboard')}
       dashboardType="default"
       onSidebarSelect={handleSidebarSelect}
       selectedIndex={selectedIndex}
       onSelectedIndexChange={setSelectedIndex}
       customSidebarItems={[
-        { linkName: 'Overview', icon: 'Grid' }, // FiGrid
-        { linkName: 'Issues', icon: 'List' }     // FiList
+        { linkName: t('overview'), icon: 'Grid' }, // FiGrid
+        { linkName: t('issues'), icon: 'List' }     // FiList
       ]}
     >
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -387,7 +412,7 @@ const DCACDashboard = () => {
           <div className="mb-6">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
               <FaMapPin className="mr-1.5 h-4 w-4" />
-              {userDistrict} District
+              {t('districtBadge', { district: userDistrict })}
             </span>
           </div>
         )}
@@ -411,66 +436,89 @@ const DCACDashboard = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-[#4d1a57]">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Device ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Complaint</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Priority</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('id')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('deviceId')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('complaint')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('priority')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('status')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {issues.map((issue) => (
-                      <tr key={issue.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{issue.id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.deviceId}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.complaintType}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            issue.priorityLevel === 'High' ? 'bg-red-100 text-red-800' :
-                            issue.priorityLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {issue.priorityLevel}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
-                            {issue.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => {
-                              setSelectedIssue(issue);
-                              setShowModal(true);
-                            }}
-                            className="relative text-[#6e2f74] hover:text-[#6e2f74] mr-3 group transition-all duration-200"
-                          >
-                            <span className="relative z-10">View</span>
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#6e2f74] group-hover:w-full transition-all duration-300"></span>
-                          </button>
-                          {issue.status === 'New' && (
-                            <>
-                              <button
-                                onClick={() => handleApproveIssue(issue.id)}
-                                className="text-green-600 hover:text-green-900 mr-3"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => openRejectCommentModal(issue)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
+                    {paginatedItems.length > 0 ? (
+                      paginatedItems.map((issue) => (
+                        <tr key={issue.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{issue.id}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.deviceId}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.complaintType}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              issue.priorityLevel === 'High' ? 'bg-red-100 text-red-800' :
+                              issue.priorityLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {issue.priorityLevel}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
+                              {issue.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => {
+                                setSelectedIssue(issue);
+                                setShowModal(true);
+                              }}
+                              className="relative text-[#6e2f74] hover:text-[#6e2f74] mr-3 group transition-all duration-200"
+                            >
+                              <span className="relative z-10">{t('view')}</span>
+                              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#6e2f74] group-hover:w-full transition-all duration-300"></span>
+                            </button>
+                            {issue.status === 'New' && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveIssue(issue.id)}
+                                  className="text-green-600 hover:text-green-900 mr-3"
+                                >
+                                  {t('approveAction')}
+                                </button>
+                                <button
+                                  onClick={() => openRejectCommentModal(issue)}
+                                  className="text-red-600 hover:text-red-900"
+                                >
+                                  {t('rejectAction')}
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                          {t('noIssuesFound')}
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
+                {issues.length > 0 && (
+                  <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200">
+                    <div className="text-sm text-gray-700">
+                      {t('showingXofY', { x: paginatedItems.length, y: issues.length })}
+                    </div>
+                    {totalPages > 1 && (
+                      <SimplePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={handlePageChange}
+                        className="mt-4"
+                      />
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

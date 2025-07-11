@@ -11,12 +11,12 @@ const seedRootUser = async () => {
   
     const userData = {
       nic: process.env.ROOT_NIC,
-      username: 'rootadmin',
+      username: 'Super Admin',
       email: process.env.ROOT_EMAIL,
       roleId: rootRole.id,
       isVerified: true,
       districtId: null,
-      skillId: null
+      skillIds: null
     };
 
     if (rootUser) {

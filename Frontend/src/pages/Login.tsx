@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../provider/AuthProvider';
 import { AppContext } from '../provider/AppContext';
 import { LoginAssets } from '../assets/icons/login/login';
@@ -10,7 +10,7 @@ import Button from '../components/ui/buttons/Button';
 const Login = () => {
   const navigate = useNavigate();
   const { setToken } = useAuth();
-  const { backendUrl, setIsLoggedIn } = React.useContext(AppContext);
+  const { backendUrl } = React.useContext(AppContext);
 
   const [nic, setNic] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +20,7 @@ const Login = () => {
   const [forgotNic, setForgotNic] = useState('');
   const [forgotMsg, setForgotMsg] = useState('');
   const { t } = useTranslation();
+  const location = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,19 +43,25 @@ const Login = () => {
       });
 
       const data = await response.json();
-      console.log('Login response:', data); // Log the full response
       
-      if (!response.ok) throw new Error(data.message || 'Login failed');
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Debug log to check the role value
+      console.log('Login response data:', data);
+      const userRole = data.role || data.user?.role;
+      console.log('User role from login:', userRole);
 
       // Set token and user data through AuthProvider
       setToken(data.token, {
         username: data.username || data.user?.username,
-        role: data.role || data.user?.role, 
-    
+        role: userRole,
       });
       
-      setIsLoggedIn(true);
-      navigate(`/dashboard/${data.role}`);
+      // Redirect to the intended URL or default dashboard
+      const from = location.state?.from?.pathname || `/dashboard/${userRole}`;
+      navigate(from, { replace: true });
     } catch (err: any) {
       toast.error(err.message || 'Login failed');
     }
@@ -102,7 +109,7 @@ const Login = () => {
           <p className="text-sm">මැතිවරණ කොමිෂන් සභාව</p>
           <p className="text-sm">தேர்தல் ஆணைக்குழு</p>
           <p className="text-sm mb-2">Election Commission</p>
-          <h2 className="text-xl font-bold">{t('Welcome')}</h2>
+          <p className="text-xl font-bold text-center w-full">{t('Issue Tracking Management System')}</p>
     
         </div>
 
@@ -167,23 +174,28 @@ const Login = () => {
 
       {/*  Forgot Password Modal Overlay */}
       {showForgotModal && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-80">
-            <h3 className="text-lg font-semibold text-purple-700 mb-2">{t('Reset Password')}</h3>
-            <form onSubmit={handleForgotPassword}>
-              <input
-                type="text"
-                placeholder={t('Please enter your NIC number')}
-                value={forgotNic}
-                onChange={(e) => setForgotNic(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A1FE7]"
-              />
-              <button
-                type="submit"
-                className="w-full bg-purple-700 text-white py-2 rounded mb-2"
-              >
-                {t('Send Email')}
-              </button>
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-white/90 p-6 rounded-xl shadow-xl w-80 backdrop-blur-sm">
+            <h3 className="text-lg font-semibold text-purple-700 mb-4">{t('Reset Password')}</h3>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <input
+                  type="text"
+                  placeholder={t('Please enter your NIC number')}
+                  value={forgotNic}
+                  onChange={(e) => setForgotNic(e.target.value)}
+                  className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A1FE7] bg-white/80"
+                />
+              </div>
+              <div className="pt-2">
+                <Button
+                  buttonType="submit"
+                  buttonText={t('Send Email')}
+                  buttonColor="#5B005B"
+                  buttonStyle={2}
+                  className="w-full"
+                />
+              </div>
               {forgotMsg && <p className="text-sm text-green-600">{forgotMsg}</p>}
             </form>
             <button

@@ -15,12 +15,6 @@ const getAllUsers = async (req, res) => {
           model: District,
           as: 'district',
           attributes: ['id', 'name']
-        },
-        {
-          model: Skill,
-          as: 'skills',
-          attributes: ['id', 'name'],
-          through: { attributes: [] } 
         }
       ],
       attributes: [
@@ -33,6 +27,7 @@ const getAllUsers = async (req, res) => {
         'attachment',
         'status',
         'rejectionReason',
+        'skillIds',
         'createdAt',
         'updatedAt'
       ],
@@ -41,13 +36,31 @@ const getAllUsers = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    // Add location field based on district name
-    const usersWithLocation = users.map(user => ({
-      ...user,
-      location: user.district?.name 
-    }));
+    // Get all skills to map IDs to names
+    const allSkills = await Skill.findAll();
+    const skillMap = new Map(allSkills.map(skill => [skill.id.toString(), skill.name]));
 
-    res.json(usersWithLocation);
+    // Process users to include skill names
+    const processedUsers = users.map(user => {
+      let skills = [];
+      if (user.skillIds) {
+        const skillIds = user.skillIds.split(',').map(id => id.trim());
+        skills = skillIds
+          .filter(id => skillMap.has(id))
+          .map(id => ({
+            id: parseInt(id, 10),
+            name: skillMap.get(id)
+          }));
+      }
+
+      return {
+        ...user,
+        location: user.district?.name,
+        skills: skills
+      };
+    });
+
+    res.json(processedUsers);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to fetch users' });

@@ -156,10 +156,13 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
             
             {/* DC/AC's Approval Status */}
             {selectedIssue.status === ISSUE_STATUS.DC_APPROVED && (
-              <div className="p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r">
-                <h4 className="text-sm font-medium text-blue-800 mb-2">{t('DC/AC Approval Status')}</h4>
-                <div className="bg-white p-3 rounded border border-blue-100">
-                  <p className="text-sm text-gray-700">{t('DC/AC Approval Pending')}</p>
+              <div className="p-4 bg-green-50 border-l-4 border-green-400 rounded-r">
+                <h4 className="text-sm font-medium text-green-800 mb-2">{t('DC/AC Approval Status')}</h4>
+                <div className="bg-white p-3 rounded border border-green-100">
+                  <p className="text-sm text-gray-700 flex items-center">
+                    <FiCheckCircle className="text-green-500 mr-2" />
+                    {t('Approved by DC/AC')}
+                  </p>
                 </div>
               </div>
             )}
