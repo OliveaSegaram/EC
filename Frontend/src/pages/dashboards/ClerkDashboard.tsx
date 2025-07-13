@@ -32,13 +32,13 @@ const ClerkDashboard = () => {
   const [filterStatus, setFilterStatus] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [currentIssuesPage, setCurrentIssuesPage] = useState(1);
+  //const [currentIssuesPage, setCurrentIssuesPage] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{open: boolean, issue: Issue | null}>({open: false, issue: null});
   const [activeView, setActiveView] = useState<'dashboard' | 'issues'>('dashboard');
   
   const itemsPerPage = 5;
-  const itemsPerIssuesPage = 5;
+ // const itemsPerIssuesPage = 5;
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -291,9 +291,6 @@ const ClerkDashboard = () => {
                 setDeleteConfirm={setDeleteConfirm}
                 getStatusColor={getStatusColor}
                 getPriorityColor={getPriorityColor}
-                currentPage={currentIssuesPage}
-                setCurrentPage={setCurrentIssuesPage}
-                itemsPerPage={itemsPerIssuesPage}
                 fetchIssues={fetchIssues}
               />
             </div>
