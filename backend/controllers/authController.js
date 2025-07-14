@@ -26,6 +26,24 @@ const register = async (req, res) => {
       then: Joi.number().integer().required(),
       otherwise: Joi.number().integer().optional()
     }),
+    branch: Joi.when('role', {
+      is: Joi.valid('subject_clerk', 'dc'),
+      then: Joi.when('districtId', {
+        is: Joi.number(),
+        then: async (value, helpers) => {
+          const district = await District.findByPk(value);
+          if (district && district.name === 'Colombo Head Office') {
+            return Joi.string().required().messages({
+              'string.empty': 'Branch is required for Colombo Head Office',
+              'any.required': 'Branch is required for Colombo Head Office'
+            });
+          }
+          return Joi.string().allow('');
+        },
+        otherwise: Joi.string().allow('')
+      }),
+      otherwise: Joi.string().allow('')
+    }),
     // Support both skillId and skillIds during transition
     skillId: Joi.when('role', {
       is: 'technical_officer',
@@ -188,24 +206,24 @@ const register = async (req, res) => {
 
     const attachmentUrl = req.file ? req.file.path : null;
 
-    // Create the user with skillIds
-    const user = await User.create({
+    // Create the user with the found or created district
+    const userData = {
       nic,
       username,
       email,
       password: hashedPassword,
       roleId: roleData.id,
-      isVerified: false,
-      attachment: attachmentUrl,
       description,
-      districtId,
-      skillIds: skillIdsValue.join(',')
-    }, {
-      fields: [
-        'nic', 'username', 'email', 'password', 'roleId', 
-        'isVerified', 'attachment', 'description', 'districtId', 'skillIds'
-      ]
-    });
+      districtId: district.id,
+      branch: req.body.branch || null,
+      skillIds: skillIdsValue.join(','),
+      attachment: req.file ? req.file.filename : null,
+      isVerified: false
+    };
+
+    console.log('Creating user with data:', userData);
+    
+    const user = await User.create(userData);
 
     // Get skill names for email
     const skillNames = [];

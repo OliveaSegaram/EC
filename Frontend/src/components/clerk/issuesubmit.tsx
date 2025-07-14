@@ -46,18 +46,6 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({
   const [isHeadOffice, setIsHeadOffice] = useState<boolean>(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   
-  // List of branches for Colombo Head Office
-  const headOfficeBranches = [
-    t('Admin Branch'),
-    t('Finance Branch'),
-    t('HR Branch'),
-    t('IT Branch'),
-    t('Operations Branch'),
-    t('Legal Branch'),
-    t('Marketing Branch'),
-    t('Customer Service Branch')
-  ];
-  
   const [issue, setIssue] = useState<IssueState>({
     deviceId: issueToEdit?.deviceId || '',
     complaintType: issueToEdit?.complaintType || '',
@@ -72,7 +60,7 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Fetch user's district when component mounts
+  // Fetch user's district and branch when component mounts
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -106,12 +94,12 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({
           setIsHeadOffice(isColombo);
           setLocationError(null);
           
-          // Set the location in the form state if not already set
+          // Set the location and branch in the form state
           setIssue(prev => ({
             ...prev,
             location: district.id.toString(),
-            // Clear branch if not head office
-            branch: isColombo ? (prev.branch || '') : ''
+            // Set branch from user profile if available, otherwise keep existing value
+            branch: isColombo ? (response.data.branch || prev.branch || '') : ''
           }));
         } else {
           const errorMsg = t('Your account is not associated with a district. Please contact support.');
@@ -461,25 +449,21 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({
           </select>
         </div>
 
-        {/* Branch dropdown for Colombo Head Office */}
-        {isHeadOffice && (
+        {/* Branch display for Colombo Head Office */}
+        {isHeadOffice && issue.branch && (
           <div className="mb-4">
             <label htmlFor="branch" className="block text-gray-700 font-semibold mb-2">
-            {t('Branch')}
-          </label>
-            <select
+              {t('Branch')}
+            </label>
+            <input
+              type="text"
               id="branch"
               name="branch"
               value={issue.branch}
-              onChange={handleChange}
-              required
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            >
-              <option value="">{t('Select Branch')} *</option>
-              {headOfficeBranches.map(branch => (
-                <option key={branch} value={branch}>{branch}</option>
-              ))}
-            </select>
+              readOnly
+              className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700 text-sm cursor-not-allowed"
+            />
+            <input type="hidden" name="branch" value={issue.branch} />
           </div>
         )}
 

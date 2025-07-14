@@ -26,7 +26,6 @@ interface Issue {
 interface IssueTableProps {
   issues: Issue[];
   filterStatus: 'All' | 'Pending' | 'Approved' | 'Rejected';
-  setDeleteConfirm: (confirm: { open: boolean; issue: Issue | null }) => void;
   getStatusColor: (status: string) => string;
   getPriorityColor: (priority: string) => string;
   fetchIssues: () => Promise<void>;
@@ -35,7 +34,6 @@ interface IssueTableProps {
 const IssueTable = ({
   issues,
   filterStatus,
-  setDeleteConfirm,
   getStatusColor,
   getPriorityColor,
   fetchIssues,
@@ -44,6 +42,7 @@ const IssueTable = ({
   if (!appContext) throw new Error('AppContext is not available');
   const { backendUrl } = appContext;
   const [filteredIssues, setFilteredIssues] = useState<Issue[]>([]);
+  const [removedIssueIds, setRemovedIssueIds] = useState<number[]>([]);
   
   // Pagination
   const { paginatedItems, currentPage, totalPages, handlePageChange } = useSimplePagination(filteredIssues, 5);
@@ -53,6 +52,7 @@ const IssueTable = ({
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{open: boolean; issue: Issue | null}>({open: false, issue: null});
   const { t } = useTranslation();
   
   const handleEditIssue = (issue: Issue) => {
@@ -126,40 +126,52 @@ const IssueTable = ({
     }
   };
 
-  // Filter issues based on status
+  // Show delete confirmation
+  const showDeleteConfirm = (issue: Issue) => {
+    setDeleteConfirm({ open: true, issue });
+  };
+
+  // Handle confirmed deletion (UI only)
+  const handleUIRemove = () => {
+    if (!deleteConfirm.issue) return;
+    
+    setRemovedIssueIds(prev => [...prev, deleteConfirm.issue!.id]);
+    setDeleteConfirm({ open: false, issue: null });
+    toast.success('Issue removed from view');
+  };
+
+  // Filter issues based on status and removed issues
   useEffect(() => {
-    // Log all unique status values in the issues array
-    const uniqueStatuses = [...new Set(issues.map(i => i.status))];
-    console.log('All unique statuses in issues:', uniqueStatuses);
-    console.log('Current filter status:', filterStatus);
-    
-    let filtered = [...issues];
-    
-    if (filterStatus === 'Pending') {
-      filtered = filtered.filter(issue => issue.status === 'Pending' || issue.status === 'Pending Approval');
-    } else if (filterStatus === 'Approved') {
-      const approvedStatuses = [
-        'Approved',
-        'Approved by Super Admin',
-        'DC Approved',
-        'Issue approved by Super Admin',
-        'Super User Approved',
-        'Super Admin Approved'
-      ];
-      console.log('Approved statuses being checked:', approvedStatuses);
-      filtered = filtered.filter(issue => approvedStatuses.includes(issue.status));
-      console.log('Filtered approved issues:', filtered);
-    } else if (filterStatus === 'Rejected') {
-      filtered = filtered.filter(issue => [
-        'Rejected', 
-        'Rejected by DC', 
-        'Rejected by Super Admin', 
-        'Issue rejected by Super Admin'
-      ].includes(issue.status));
-    }
-    
+    const filtered = issues.filter(issue => {
+      // Skip removed issues
+      if (removedIssueIds.includes(issue.id)) return false;
+      
+      // Apply status filter
+      if (filterStatus === 'All') return true;
+      if (filterStatus === 'Pending') {
+        return issue.status === 'Pending' || issue.status === 'Pending Approval';
+      } else if (filterStatus === 'Approved') {
+        const approvedStatuses = [
+          'Approved',
+          'Approved by Super Admin',
+          'DC Approved',
+          'Issue approved by Super Admin',
+          'Super User Approved',
+          'Super Admin Approved'
+        ];
+        return approvedStatuses.includes(issue.status);
+      } else if (filterStatus === 'Rejected') {
+        return [
+          'Rejected', 
+          'Rejected by DC', 
+          'Rejected by Super Admin', 
+          'Issue rejected by Super Admin'
+        ].includes(issue.status);
+      }
+      return false;
+    });
     setFilteredIssues(filtered);
-  }, [issues, filterStatus]);
+  }, [issues, filterStatus, removedIssueIds]);
 
   // Fetch district names for all unique district IDs in the issues
   useEffect(() => {
@@ -299,23 +311,21 @@ const IssueTable = ({
                         <IconMapper iconName="Eye" iconSize={20} className="text-purple-600 hover:text-purple-800" />
                       </button>
                       {issue.status === 'Pending' && (
-                        <>
-                          <button
-                            onClick={() => handleEditIssue(issue)}
-                            className="text-[#4d1a57] hover:text-[#3a1340] transition-colors duration-200 p-1.5 rounded-full hover:bg-purple-50"
-                            title="Edit Issue"
-                          >
-                            <IconMapper iconName="Edit2" iconSize={20} className="text-blue-600 hover:text-blue-800" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm({ open: true, issue })}
-                            className="text-red-500 hover:text-red-600 transition-colors duration-200 p-1.5 rounded-full hover:bg-red-50"
-                            title="Delete Issue"
-                          >
-                            <IconMapper iconName="Trash2" iconSize={20} className="text-red-500 hover:text-red-600" />
-                          </button>
-                        </>
+                        <button
+                          onClick={() => handleEditIssue(issue)}
+                          className="text-[#4d1a57] hover:text-[#3a1340] transition-colors duration-200 p-1.5 rounded-full hover:bg-purple-50"
+                          title="Edit Issue"
+                        >
+                          <IconMapper iconName="Edit2" iconSize={20} className="text-blue-600 hover:text-blue-800" />
+                        </button>
                       )}
+                      <button
+                        onClick={() => showDeleteConfirm(issue)}
+                        className="text-red-500 hover:text-red-600 transition-colors duration-200 p-1.5 rounded-full hover:bg-red-50"
+                        title="Remove from view"
+                      >
+                        <IconMapper iconName="Trash2" iconSize={20} className="text-red-500 hover:text-red-600" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -352,6 +362,47 @@ const IssueTable = ({
           getStatusColor={getStatusColor}
           getPriorityColor={getPriorityColor}
         />
+      )}
+      
+      {/* Delete Confirmation Dialog with semi-transparent background */}
+      {deleteConfirm.open && deleteConfirm.issue && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-start">
+              <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Remove Issue
+                </h3>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500">
+                    Are you sure you want to remove this issue?
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+              <button
+                type="button"
+                onClick={handleUIRemove}
+                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm({ open: false, issue: null })}
+                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

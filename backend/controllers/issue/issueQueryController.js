@@ -1,7 +1,7 @@
 const { Issue, District, User, Role } = require('../../models');
 const { Op } = require('sequelize');
 
-// Get all issues (filtered by user's role and district if applicable)
+// Get all issues (filtered by user's role, district, and branch)
 exports.getAllIssues = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -10,25 +10,48 @@ exports.getAllIssues = async (req, res) => {
     
     let whereClause = {};
     
-    // Define roles that can see all issues
+    // Get user details
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Define admin roles that can see all issues
     const adminRoles = ['super_admin', 'super_user', 'technical_officer', 'root'];
     
-    // If user has admin role, show all issues
-    if (adminRoles.includes(userRole)) {
-      console.log(`${userRole} user: Fetching all issues`);
-      
+    // For subject_clerk: Only show issues they've submitted
+    if (userRole === 'subject_clerk') {
+      whereClause = { submittedBy: userId };
+      console.log(`Subject clerk (${userId}): Fetching only their submitted issues`);
     } 
-    // For subject_clerk and dc, filter by district
-    else if (['subject_clerk', 'dc'].includes(userRole) && userDistrictId) {
+    // For DC: Show issues from their district
+    else if (userRole === 'dc' && userDistrictId) {
+      whereClause = { location: userDistrictId.toString() };
+      console.log(`DC user (${userId}): Fetching issues for district ID: ${userDistrictId}`);
+    }
+    // For Colombo Head Office users: Show issues from their branch
+    else if (['super_admin', 'super_user', 'technical_officer'].includes(userRole) && user.branch) {
       whereClause = {
         [Op.or]: [
-          { location: userDistrictId.toString() },
-          //{ location: { [Op.like]: 'Colombo Head Office%' } }
+          { location: { [Op.like]: `Colombo Head Office - ${user.branch}%` } },
+          { 
+            [Op.and]: [
+              { location: 'Colombo Head Office' },
+              { branch: user.branch }
+            ]
+          }
         ]
       };
-      console.log(`${userRole} user: Fetching issues for district ID: ${userDistrictId}`);
-    } else {
-      console.error('No district filtering rules apply for this user role');
+      console.log(`${userRole} user: Fetching issues for branch: ${user.branch}`);
+    } 
+    // For other admin roles: Show all issues
+    else if (adminRoles.includes(userRole)) {
+      console.log(`${userRole} user: Fetching all issues`);
+      // No additional filters needed for these roles
+    } 
+    // No access for other roles
+    else {
+      console.error('No access rules defined for this user role');
       return res.status(403).json({ message: 'Access denied' });
     }
     
@@ -87,25 +110,28 @@ exports.getAllIssues = async (req, res) => {
 exports.getIssueDetails = async (req, res) => {
   try {
     const { id } = req.params;
+    const userRole = req.user.role;
     
+    const include = [
+      {
+        model: User,
+        as: 'assignedToUser',
+        attributes: ['id', 'username', 'email']
+      },
+      {
+        model: User,
+        as: 'submittedByUser',
+        attributes: ['id', 'username', 'email']
+      },
+      {
+        model: District,
+        as: 'district',
+        attributes: ['id', 'name']
+      }
+    ];
+
     const issue = await Issue.findByPk(id, {
-      include: [
-        {
-          model: User,
-          as: 'assignedTechnicalOfficer',
-          attributes: ['id', 'username', 'email']
-        },
-        {
-          model: User,
-          as: 'submitter',
-          attributes: ['id', 'username', 'email']
-        },
-        {
-          model: District,
-          as: 'districtInfo',
-          attributes: ['id', 'name']
-        }
-      ]
+      include: include
     });
 
     if (!issue) {

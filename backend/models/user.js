@@ -70,6 +70,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM('pending', 'approved', 'rejected'),
         defaultValue: 'pending'
       },
+      branch: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
       rejectionReason: {
         type: DataTypes.TEXT,
         allowNull: true

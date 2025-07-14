@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { AppContext } from '../../provider/AppContext';
-import DeleteConfirmation from '../../components/clerk/DeleteConfirmation';
 import IssueSubmit from '../../components/clerk/issuesubmit';
 import IssueTable from '../../components/clerk/IssueTable';
 import OverviewPanel from '../../components/clerk/OverviewPanel';
@@ -33,8 +32,6 @@ const ClerkDashboard = () => {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   //const [currentIssuesPage, setCurrentIssuesPage] = useState(1);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<{open: boolean, issue: Issue | null}>({open: false, issue: null});
   const [activeView, setActiveView] = useState<'dashboard' | 'issues'>('dashboard');
   
   const itemsPerPage = 5;
@@ -288,7 +285,6 @@ const ClerkDashboard = () => {
               <IssueTable
                 issues={issues}
                 filterStatus={filterStatus}
-                setDeleteConfirm={setDeleteConfirm}
                 getStatusColor={getStatusColor}
                 getPriorityColor={getPriorityColor}
                 fetchIssues={fetchIssues}
@@ -296,15 +292,7 @@ const ClerkDashboard = () => {
             </div>
           )}
 
-          {deleteConfirm.open && (
-            <DeleteConfirmation
-              deleteConfirm={deleteConfirm}
-              setDeleteConfirm={setDeleteConfirm}
-              fetchIssues={fetchIssues}
-              isDeleting={isDeleting}
-              setIsDeleting={setIsDeleting}
-            />
-          )}
+
         </div>
       </div>
     </Layout>

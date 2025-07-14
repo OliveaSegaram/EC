@@ -13,7 +13,7 @@ exports.submitIssue = async (req, res) => {
       complaintType,
       description,
       priorityLevel,
-      location,
+      //location,
       underWarranty
     } = req.body;
 
@@ -86,6 +86,7 @@ exports.submitIssue = async (req, res) => {
       description,
       priorityLevel,
       location: issueLocation,
+      branch: isHeadOffice ? req.body.branch : null, // Save branch for Colombo Head Office
       underWarranty: underWarranty === 'true',
       status: PENDING,
       submittedAt: new Date(),

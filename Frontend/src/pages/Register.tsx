@@ -74,9 +74,24 @@ const Register = () => {
     role: string;
     districtId: string;
     skillIds: string[]; // Changed from skillId to skillIds
+    branch: string;
     description: string;
     attachment: File | null;
   }
+
+  // List of branches for Colombo Head Office
+  const branches = [
+    'Parliament Branch',
+    'Local Bodies Branch',
+    'Legal Investigation and Planning Branch',
+    'Admin Branch',
+    'Finance Branch',
+    'Establishment Branch / Transport Branch',
+    'Supplies Branch',
+    'ICT Branch',
+    'Language Policy Implementation Branch',
+    'Internal Audit Branch'
+  ];
 
   const [formData, setFormData] = useState<FormData>({
     nic: '',
@@ -87,6 +102,7 @@ const Register = () => {
     role: '',
     districtId: '',
     skillIds: [], // Changed from skillId to skillIds
+    branch: '',
     description: '',
     attachment: null
   });
@@ -233,6 +249,11 @@ const Register = () => {
       payload.append('email', formData.email);
       payload.append('password', formData.password);
       payload.append('role', formData.role);
+      
+      // Add branch if available
+      if (formData.branch) {
+        payload.append('branch', formData.branch);
+      }
       
       // Always include districtId, it will be set to Colombo Head Office for relevant roles
       const districtIdToSend = formData.districtId || 
@@ -451,6 +472,27 @@ const Register = () => {
               </p>
             )}
 
+            {/* Branch selection for subject_clerk and dc roles in Colombo Head Office */}
+            {(formData.role === 'subject_clerk' || formData.role === 'dc') && formData.districtId && 
+             districts.find(d => d.id.toString() === formData.districtId)?.name === 'Colombo Head Office' && (
+              <div className="mb-3">
+                <select
+                  name="branch"
+                  value={formData.branch}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 focus:border-gray-300 focus:ring-0 px-4 py-2 rounded-lg mb-3 transition-colors"
+                  required
+                >
+                  <option value="">-- Select Branch --</option>
+                  {branches.map((branch, index) => (
+                    <option key={index} value={branch}>
+                      {branch}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Skills checkboxes - only shown for Technical Officer role */}
             {formData.role === 'technical_officer' && (
               <div className="mb-3">
@@ -485,8 +527,9 @@ const Register = () => {
             <textarea
               name="description"
               placeholder={
-                districts.find(d => d.id.toString() === formData.districtId)?.name === 'Colombo Head Office' 
-                  ? t('Please include your branch and your short description') 
+                (formData.role === 'subject_clerk' || formData.role === 'dc') && 
+                districts.find(d => d.id.toString() === formData.districtId)?.name === 'Colombo Head Office'
+                  ? t('Enter a short description about yourself')
                   : t('Enter a short description or reason for registering')
               }
               value={formData.description}

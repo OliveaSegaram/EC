@@ -22,14 +22,12 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     },
     location: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'Districts',
-        key: 'id'
-      },
-      onDelete: 'SET NULL',
-      onUpdate: 'CASCADE'
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    branch: {
+      type: DataTypes.STRING,
+      allowNull: true
     },
     underWarranty: {
       type: DataTypes.BOOLEAN, 
@@ -74,8 +72,6 @@ module.exports = (sequelize, DataTypes) => {
       onUpdate: 'CASCADE',
       field: 'userId'  // Explicitly set the field name
     },
-    // We'll use the existing comment field for approval comments
-    // This is a virtual getter for backward compatibility
     approvalComment: {
       type: DataTypes.VIRTUAL,
       get() {
