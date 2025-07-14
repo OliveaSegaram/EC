@@ -265,7 +265,7 @@ const DCACDashboard = () => {
         )
       );
       
-      toast.success(t('issueApprovedSuccessfullt'));
+      toast.success(t('issue Approved Successfully'));
       
       // Refresh issues to get the latest data without showing success toast
       await fetchIssues(false);
