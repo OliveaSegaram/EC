@@ -80,19 +80,22 @@ exports.submitIssue = async (req, res) => {
       attachmentPath = `uploads/${filename}`;
     }
 
-    const issue = await Issue.create({
+    const issueData = {
       deviceId,
       complaintType,
       description,
       priorityLevel,
-      location: issueLocation,
+      districtId: issueLocation ? parseInt(issueLocation, 10) : null,
       branch: isHeadOffice ? req.body.branch : null, // Save branch for Colombo Head Office
       underWarranty: underWarranty === 'true',
       status: PENDING,
       submittedAt: new Date(),
       attachment: attachmentPath,
-      userId: userId 
-    });
+      userId: userId
+    };
+
+    console.log('Creating issue with data:', issueData);
+    const issue = await Issue.create(issueData);
 
     res.status(201).json({
       message: 'Issue submitted successfully',

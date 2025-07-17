@@ -3,9 +3,9 @@ export const ISSUE_STATUS = {
   // Initial status when issue is created
   PENDING: 'Pending',
   
-  // DC/AC related statuses
-  DC_APPROVED: 'Approved by DC/AC',
-  DC_REJECTED: 'Rejected by DC/AC',
+  // Verifying Officer related statuses
+  DC_APPROVED: 'Approved by Verifying Officer',
+  DC_REJECTED: 'Rejected by Verifying Officer',
   
   // Super Admin related statuses
   SUPER_ADMIN_APPROVED: 'Approved by Super Admin',
@@ -44,10 +44,17 @@ export const ISSUE_STATUS = {
   
   // Status display names
   getDisplayName: (status: string): string => {
+    // Handle both old and new status names
+    const normalizedStatus = status
+      .replace('DC/AC', 'Verifying Officer')
+      .replace('DcAc', 'VerifyingOfficer');
+      
     const statusMap: Record<string, string> = {
       [ISSUE_STATUS.PENDING]: 'Pending',
-      [ISSUE_STATUS.DC_APPROVED]: 'Approved by DC/AC',
-      [ISSUE_STATUS.DC_REJECTED]: 'Rejected by DC/AC',
+      [ISSUE_STATUS.DC_APPROVED]: 'Approved by Verifying Officer',
+      ['Approved by DC/AC']: 'Approved by Verifying Officer',
+      [ISSUE_STATUS.DC_REJECTED]: 'Rejected by Verifying Officer',
+      ['Rejected by DC/AC']: 'Rejected by Verifying Officer',
       [ISSUE_STATUS.SUPER_ADMIN_APPROVED]: 'Approved by Super Admin',
       [ISSUE_STATUS.SUPER_ADMIN_REJECTED]: 'Rejected by Super Admin',
       [ISSUE_STATUS.ASSIGNED]: 'Assigned',
@@ -58,7 +65,7 @@ export const ISSUE_STATUS = {
       [ISSUE_STATUS.REOPENED]: 'Reopened',
       [ISSUE_STATUS.ADD_TO_PROCUREMENT]: 'Add to Procurement',
     };
-    return statusMap[status] || status;
+    return statusMap[normalizedStatus] || statusMap[status] || status;
   },
   
   // Status colors for UI

@@ -23,7 +23,7 @@ exports.approveByDC = async (req, res) => {
     // Format the approval comment with timestamp and user info
     const timestamp = new Date().toISOString();
     const userInfo = req.user.username ? ` (${req.user.username})` : '';
-    const approvalNote = comment || 'Approved by DC/AC';
+    const approvalNote = comment || 'Approved by Verifying Officer';
     const statusUpdate = `${approvalNote}${userInfo} at ${timestamp}`;
     
     // Update the issue
@@ -36,13 +36,13 @@ exports.approveByDC = async (req, res) => {
     await issue.save();
 
     res.status(200).json({
-      message: 'Issue approved by DC/AC successfully',
+      message: 'Issue approved by Verifying Officer successfully',
       issue
     });
   } catch (error) {
     console.error('Error approving issue by DC:', error);
     res.status(500).json({
-      message: 'Error approving issue by DC/AC',
+      message: 'Error approving issue by Verifying Officer',
       error: error.message
     });
   }
@@ -63,7 +63,7 @@ exports.rejectByDC = async (req, res) => {
     // Format the rejection comment with timestamp and user info
     const timestamp = new Date().toISOString();
     const userInfo = req.user.username ? ` (${req.user.username})` : '';
-    const rejectionNote = comment || 'Rejected by DC/AC';
+    const rejectionNote = comment || 'Rejected by Verifying Officer';
     const statusUpdate = `${rejectionNote}${userInfo} at ${timestamp}`;
     
     // Update the issue
@@ -76,13 +76,13 @@ exports.rejectByDC = async (req, res) => {
     await issue.save();
 
     res.status(200).json({
-      message: 'Issue rejected by DC/AC successfully',
+      message: 'Issue rejected by Verifying Officer successfully',
       issue
     });
   } catch (error) {
-    console.error('Error rejecting issue by DC/AC:', error);
+    console.error('Error rejecting issue by Verifying Officer:', error);
     res.status(500).json({
-      message: 'Error rejecting issue by DC/AC',
+      message: 'Error rejecting issue by Verifying Officer',
       error: error.message
     });
   }
@@ -143,7 +143,7 @@ exports.approveBySuperUser = async (req, res) => {
     // Format the approval comment with timestamp and user info
     const timestamp = new Date().toISOString();
     const userInfo = req.user.username ? ` (${req.user.username})` : '';
-    const approvalNote = comment || 'Approved by Super User';
+    const approvalNote = comment || 'Approved by Super Admin';
     const statusUpdate = `${approvalNote}${userInfo} at ${timestamp}`;
     
     // Update the issue
@@ -156,13 +156,13 @@ exports.approveBySuperUser = async (req, res) => {
     await issue.save();
 
     res.status(200).json({
-      message: 'Issue approved by Super User successfully',
+      message: 'Issue approved by Super Admin successfully',
       issue
     });
   } catch (error) {
-    console.error('Error approving issue by Super User:', error);
+    console.error('Error approving issue by Super Admin:', error);
     res.status(500).json({
-      message: 'Error approving issue by Super User',
+      message: 'Error approving issue by Super Admin',
       error: error.message
     });
   }

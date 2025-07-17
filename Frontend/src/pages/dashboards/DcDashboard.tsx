@@ -247,7 +247,7 @@ const DCACDashboard = () => {
       
       await axios.post(
         `${backendUrl}/issues/${issueId}/approve-dc`,
-        { comment: 'Approved by DC/AC' },
+        { comment: 'Approved by Verifying Officer' },
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -260,7 +260,7 @@ const DCACDashboard = () => {
       setIssues(currentIssues => 
         currentIssues.map(issue => 
           issue.id === issueId 
-            ? { ...issue, status: ISSUE_STATUS.DC_APPROVED, comment: 'Approved by DC/AC' } 
+            ? { ...issue, status: ISSUE_STATUS.DC_APPROVED, comment: 'Approved by Verifying Officer' } 
             : issue
         )
       );
@@ -338,44 +338,13 @@ const DCACDashboard = () => {
   };*/}
 
   const getStatusColor = (status: string) => {
-    // Use the status color from the ISSUE_STATUS constants if available
     try {
+      // First try to get the color from the ISSUE_STATUS constants
       return ISSUE_STATUS.getStatusColor(status);
     } catch (e) {
       console.warn(`No color mapping found for status: ${status}`);
-      // Fallback to legacy status handling for backward compatibility
-      const statusLower = status.toLowerCase();
-
-      if (statusLower.includes('reject') || statusLower.includes('decline')) {
-        return 'bg-red-100 text-red-800';
-      }
-
-      // If not found in constants, use the old switch cases as fallback
-      switch (status) {
-        case 'Pending':
-        case 'Pending Approval':
-          return 'bg-yellow-100 text-yellow-800';
-        case 'DC Approved':
-        case 'Issue approved by DC':
-        case 'Super User Approved':
-        case 'Super Admin Approved':
-          return 'bg-green-100 text-green-800';
-        case 'Assigned to Technician':
-        case 'In Progress':
-        case 'Under Repair':
-          return 'bg-blue-100 text-blue-800';
-        case 'Rejected':
-        case 'Rejected by DC':
-        case 'Issue rejected by Super Admin':
-          return 'bg-red-100 text-red-800';
-        case 'Completed':
-        case 'Resolved':
-          return 'bg-purple-100 text-purple-800';
-        case 'Closed':
-          return 'bg-gray-100 text-gray-800';
-        default:
-          return 'bg-gray-100 text-gray-800';
-      }
+      // Fallback to default color
+      return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -396,7 +365,7 @@ const DCACDashboard = () => {
 
   return (
     <Layout 
-      title={t('dcAcDashboard')}
+      title={t('verifyingOfficerDashboard')}
       dashboardType="default"
       onSidebarSelect={handleSidebarSelect}
       selectedIndex={selectedIndex}
@@ -462,7 +431,7 @@ const DCACDashboard = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
-                              {issue.status}
+                              {ISSUE_STATUS.getDisplayName(issue.status)}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

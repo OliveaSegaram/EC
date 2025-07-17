@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 interface Issue {
   id: number;
@@ -33,7 +34,7 @@ const RejectCommentModal: React.FC<RejectCommentModalProps> = ({
 }) => {
   if (!showCommentModal || !commentIssue) return null;
   
-  const isViewOnly = commentIssue.status === 'DC Rejected';
+  const isViewOnly = commentIssue.status === ISSUE_STATUS.DC_REJECTED;
   
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-20">

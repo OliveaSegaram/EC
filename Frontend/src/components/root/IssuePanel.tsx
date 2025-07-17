@@ -508,7 +508,7 @@ const IssuePanel: FC = (): ReactElement => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
-                            {issue.status}
+                            {ISSUE_STATUS.getDisplayName(issue.status)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

@@ -8,6 +8,7 @@ import IssueSubmit from './issuesubmit.tsx';
 import { AppContext } from '../../provider/AppContext';
 import SimplePagination from '../common/SimplePagination';
 import { useSimplePagination } from '../../hooks/useSimplePagination';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 interface Issue {
   id: number;
@@ -291,7 +292,7 @@ const IssueTable = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status)}`}>
-                      {issue.status}
+                      {ISSUE_STATUS.getDisplayName(issue.status)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

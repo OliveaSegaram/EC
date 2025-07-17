@@ -16,9 +16,10 @@ type Props = {
     buttonType?: 'button' | 'submit' | 'reset'; // E.g: 'button' or 'submit'
     disabled?: boolean; // Whether the button is disabled
     reverseIcons?: boolean; // Whether to reverse the order of icon and text
+    noHoverScale?: boolean; // Whether to disable hover scale effect
 };
 
-function Button({ buttonText, buttonType = "button", textColor = "red", buttonColor = "#3B0043", buttonStyle = 1, iconName, iconSize, className, onClick, disabled = false, reverseIcons = false }: Props) {
+function Button({ buttonText, buttonType = "button", textColor = "red", buttonColor = "#3B0043", buttonStyle = 1, iconName, iconSize, className, onClick, disabled = false, reverseIcons = false, noHoverScale = false }: Props) {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.MouseEvent) => {
@@ -46,10 +47,10 @@ function Button({ buttonText, buttonType = "button", textColor = "red", buttonCo
                 onClick={buttonType === 'button' ? (e) => handleSubmit(e) : undefined}
                 className={buttonStyle === 1 
                     ? `cursor-pointer px-4 py-2 bg-white border-2 border-[${buttonColor}] text-[${textColor}] rounded hover:border-2 hover:border-[#6E2F74] hover:text-[#6E2F74] hover:font-medium disabled:cursor-default flex items-center justify-center duration-300 h-[42px] transition-all ${
-                        isButtonDisabled ? 'opacity-70' : 'hover:scale-[1.02] hover:shadow-sm'
+                        isButtonDisabled ? 'opacity-70' : `${noHoverScale ? '' : 'hover:scale-[1.02]'} hover:shadow-sm`
                       } ${className}`
                     : `cursor-pointer px-4 py-2 text-white rounded-sm disabled:cursor-default flex items-center justify-center duration-300 h-[42px] transition-all ${className} ${
-                        isButtonDisabled ? 'opacity-70' : 'hover:scale-105 hover:shadow-md'
+                        isButtonDisabled ? 'opacity-70' : `${noHoverScale ? '' : 'hover:scale-105'} hover:shadow-md`
                       }`}
                 style={buttonStyle === 2 ? { backgroundColor: buttonColor } : {}}
                 disabled={isButtonDisabled}

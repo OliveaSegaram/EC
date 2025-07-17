@@ -29,16 +29,31 @@ interface Issue {
   submittedAt: string;
   updatedAt: string;
   comment?: string;  
-  attachment?: string | null;  
+  attachment?: string | null;
+  districtId?: number;
+  district?: {
+    id: number;
+    name: string;
+  } | null;  
   user: {
     id: number;
     username: string;
     email: string;
+    districtId?: number;
+    district?: {
+      id: number;
+      name: string;
+    } | null;
   };
   assignedTo: {
     id: number;
     username: string;
     email: string;
+    districtId?: number;
+    district?: {
+      id: number;
+      name: string;
+    } | null;
   } | null;
   approvals: Approval[];
 }
@@ -125,12 +140,13 @@ const Approvals = () => {
       // Set district filter based on active tab
       const districtFilter = activeTab === 'colombo' ? 'Colombo Head Office' : '';
       
-      // Fetch all issues
+      // Fetch all issues with district information
       const response = await axios.get(`${backendUrl}/issues`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { 
           userDistrict: districtFilter || undefined,
-          status: statusFilter === 'all' ? undefined : statusFilter
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          include: 'district,user.district,assignedTo.district'
         }
       });
       
@@ -347,7 +363,7 @@ const Approvals = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {issue.location}
+                    {issue.district?.name || issue.user.district?.name || issue.location || 'N/A'}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

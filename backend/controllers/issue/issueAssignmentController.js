@@ -1,4 +1,5 @@
-const { Issue, User, Role } = require('../../models');
+const db = require('../../models');
+const { Issue, User, Role, District } = db;
 const { 
   ASSIGNED,
   IN_PROGRESS,
@@ -28,11 +29,25 @@ exports.getTechnicalOfficerAssignedIssues = async (req, res) => {
           model: User,
           as: 'submitter',
           attributes: ['id', 'username', 'email']
+        },
+        {
+          model: District,
+          as: 'district',
+          attributes: ['id', 'name']
         }
       ]
     });
 
-    res.status(200).json({ issues });
+    // Transform the response to ensure location is properly set
+    const formattedIssues = issues.map(issue => {
+      const issueData = issue.get({ plain: true });
+      return {
+        ...issueData,
+        location: issueData.district ? issueData.district.name : issueData.location || 'N/A'
+      };
+    });
+
+    res.status(200).json({ issues: formattedIssues });
   } catch (error) {
     console.error('Error fetching assigned issues:', error);
     res.status(500).json({

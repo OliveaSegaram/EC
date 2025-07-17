@@ -21,9 +21,16 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-    location: {
-      type: DataTypes.STRING,
-      allowNull: false
+    districtId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Districts',
+        key: 'id'
+      },
+      onDelete: 'NO ACTION',
+      onUpdate: 'CASCADE',
+      field: 'districtId'
     },
     branch: {
       type: DataTypes.STRING,
@@ -70,7 +77,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
-      field: 'userId'  // Explicitly set the field name
+      field: 'userId'  
     },
     approvalComment: {
       type: DataTypes.VIRTUAL,
@@ -124,9 +131,10 @@ module.exports = (sequelize, DataTypes) => {
   Issue.associate = function(models) {
     // Association with District
     Issue.belongsTo(models.District, {
-      foreignKey: 'location',
-      targetKey: 'id',
-      as: 'districtInfo'
+      foreignKey: 'districtId',
+      as: 'district',
+      onDelete: 'NO ACTION',
+      onUpdate: 'CASCADE'
     });
     
     // Association with User (assigned technical officer)

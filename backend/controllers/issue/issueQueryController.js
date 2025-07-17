@@ -34,10 +34,7 @@ exports.getAllIssues = async (req, res) => {
     // For subject_clerk and dc, filter by district
     else if (['subject_clerk', 'dc'].includes(userRole) && userDistrictId) {
       whereClause = {
-        [Op.or]: [
-          { location: userDistrictId.toString() },
-          //{ location: { [Op.like]: 'Colombo Head Office%' } }
-        ]
+        districtId: userDistrictId
       };
       console.log(`${userRole} user: Fetching issues for district ID: ${userDistrictId}`);
     } else {
@@ -53,8 +50,8 @@ exports.getAllIssues = async (req, res) => {
       include: [
         {
           model: District,
-          as: 'districtInfo',
-          attributes: ['name'],
+          as: 'district',
+          attributes: ['id', 'name'],
           required: false // LEFT JOIN
         },
         {

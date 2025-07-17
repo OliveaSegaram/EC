@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
+import { ISSUE_STATUS } from '../../constants/issueStatuses';
 
 type CommentType = 'reject' | 'approve';
 
@@ -42,8 +43,8 @@ const CommentModal: React.FC<CommentModalProps> = ({
   
   const isReject = type === 'reject';
   const isViewOnly = isReject 
-    ? commentIssue.status === 'DC Rejected' 
-    : commentIssue.status === 'DC Approved';
+    ? commentIssue.status === ISSUE_STATUS.DC_REJECTED
+    : commentIssue.status === ISSUE_STATUS.DC_APPROVED;
   
   const title = isReject 
     ? (isViewOnly ? t('rejectionComment') : t('rejectIssue'))

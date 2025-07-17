@@ -445,7 +445,7 @@ const Register = () => {
               <option value="subject_clerk">Subject Clerk</option>
               <option value="super_user">Super User</option>
               <option value="technical_officer">Technical Officer</option>
-              <option value="dc">DC/AC</option>
+              <option value="dc">Verifying Officer</option>
               <option value="other">Other</option>
             </select>
 

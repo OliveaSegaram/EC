@@ -192,9 +192,13 @@ const IssueSubmit: React.FC<IssueSubmitProps> = ({
         toast.error(t('Please select a branch'));
         return false;
       }
+      // Under Warranty is now optional
+      // Default to false if not provided
       if (issue.underWarranty === undefined || issue.underWarranty === null) {
-        toast.error(t('Please select warranty status'));
-        return false;
+        setIssue(prev => ({
+          ...prev,
+          underWarranty: false
+        }));
       }
       return true;
     };

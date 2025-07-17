@@ -154,14 +154,14 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
               </div>
             )}
             
-            {/* DC/AC's Approval Status */}
+            {/* Verifying Officer's Approval Status */}
             {selectedIssue.status === ISSUE_STATUS.DC_APPROVED && (
               <div className="p-4 bg-green-50 border-l-4 border-green-400 rounded-r">
-                <h4 className="text-sm font-medium text-green-800 mb-2">{t('DC/AC Approval Status')}</h4>
+                <h4 className="text-sm font-medium text-green-800 mb-2">{t('Verifying Officer Approval Status')}</h4>
                 <div className="bg-white p-3 rounded border border-green-100">
                   <p className="text-sm text-gray-700 flex items-center">
                     <FiCheckCircle className="text-green-500 mr-2" />
-                    {t('Approved by DC/AC')}
+                    {t('Approved by Verifying Officer')}
                   </p>
                 </div>
               </div>

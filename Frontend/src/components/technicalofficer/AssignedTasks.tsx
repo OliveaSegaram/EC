@@ -1,13 +1,18 @@
 import { useEffect, useState, useContext, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 import IconMapper from '../ui/IconMapper';
 import { AppContext } from '../../provider/AppContext';
 import { ISSUE_STATUS } from '../../constants/issueStatuses';
-import axios from 'axios';
 import Button from '../ui/buttons/Button';
 import { useSimplePagination } from '../../hooks/useSimplePagination';
 import SimplePagination from '../common/SimplePagination';
+
+interface District {
+  id?: string | number;
+  name: string;
+}
 
 interface Issue {
   id: number;
@@ -15,7 +20,7 @@ interface Issue {
   complaintType: string;
   description: string;
   priorityLevel: string;
-  location: string;
+  location: string | District | null;
   status: string;
   submittedAt: string;
   comment?: string;
@@ -33,7 +38,7 @@ const AssignedTasks = () => {
   const [comment, setComment] = useState('');
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [districts, setDistricts] = useState<Record<string, string>>({});
+  // Removed unused districts state as we're now getting location directly from the issue
   
   // Pagination
   const itemsPerPage = 5;
@@ -53,32 +58,26 @@ const AssignedTasks = () => {
 
   useEffect(() => {
     fetchAssignedIssues();
-    fetchDistricts();
   }, []);
 
-  const fetchDistricts = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+  // Removed fetchDistricts as we're now getting location directly from the issue
 
-      const response = await axios.get(`${backendUrl}/districts`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.data && Array.isArray(response.data)) {
-        const districtsMap = response.data.reduce((acc: Record<string, string>, district: any) => {
-          acc[district.id] = district.name;
-          return acc;
-        }, {});
-        setDistricts(districtsMap);
-      }
-    } catch (error) {
-      console.error('Error fetching districts:', error);
+  const getDistrictName = (location: string | District | null) => {
+    console.log('getDistrictName called with location:', location);
+    
+    // If location is already a string (district name), return it
+    if (typeof location === 'string' && location.trim() !== '') {
+      return location;
     }
-  };
-
-  const getDistrictName = (locationId: string) => {
-    return districts[locationId] || locationId; // Return district name or fallback to ID if not found
+    
+    // If location is an object with name property, return the name
+    if (location && typeof location === 'object' && 'name' in location && location.name) {
+      return location.name;
+    }
+    
+    // Fallback to 'N/A' if no valid location is found
+    console.log('No valid location found, returning N/A');
+    return 'N/A';
   };
 
   // Update filtered issues when issues or activeFilter changes
@@ -111,6 +110,18 @@ const AssignedTasks = () => {
         console.log(`Issue ${issue.id} (${issue.status}): ${matches ? 'INCLUDED' : 'excluded'}`);
         return matches;
       });
+    } else if (activeFilter === 'In Progress') {
+      // Group 'In Progress', 'Add to Procurement', and 'Under Procurement' statuses together
+      result = result.filter(issue => {
+        const normalizedStatus = issue.status.toLowerCase();
+        const matches = 
+          normalizedStatus.includes('in progress') || 
+          normalizedStatus.includes('add to procurement') ||
+          normalizedStatus.includes('under procurement');
+
+        console.log(`Issue ${issue.id} (${issue.status}): ${matches ? 'INCLUDED in In Progress' : 'excluded'}`);
+        return matches;
+      });
     } else if (activeFilter) {
       // Show only the selected status (case-insensitive match)
       result = result.filter(issue => {
@@ -133,6 +144,8 @@ const AssignedTasks = () => {
     // Normalize status names for counting
     if (status.includes('Assigned') || status.includes('assigned')) {
       status = 'Assigned to Technician';
+    } else if (status === 'In Progress' || status === ISSUE_STATUS.ADD_TO_PROCUREMENT || status === 'Add to Procurement' || status === 'Under Procurement') {
+      status = 'In Progress'; // Group these under In Progress
     } else if (status === 'Completed' || status === 'Resolved') {
       status = 'Resolved'; 
     } else if (status === 'Reopened') {
@@ -151,43 +164,36 @@ const AssignedTasks = () => {
       }
 
       let responseData;
-      let response;
 
-      // First try to get all assigned issues including resolved ones
+      // First try to get all assigned issues including resolved ones with district info
       try {
-        response = await fetch(`${backendUrl}/issues/assigned`, {
+        const response = await axios.get(`${backendUrl}/issues/assigned?include=district`, {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
           }
         });
-        responseData = await response.json();
-
-        if (!response.ok) {
-          throw new Error(responseData.message || 'Failed to fetch assigned tasks');
-        }
+        responseData = response.data;
       } catch (error) {
         console.log('Primary endpoint failed, trying fallback...', error);
-        // Fall back to the original endpoint
-        const fallbackResponse = await fetch(`${backendUrl}/assignments/my-issues`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
-
-        if (!fallbackResponse.ok) {
-          const errorData = await fallbackResponse.json();
-          throw new Error(errorData.message || 'Failed to fetch assigned tasks');
+        // Fall back to the original endpoint with district info
+        try {
+          const fallbackResponse = await axios.get(`${backendUrl}/assignments/my-issues?include=district`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          responseData = fallbackResponse.data;
+        } catch (fallbackError: unknown) {
+          const errorMessage = (fallbackError as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to fetch assigned tasks';
+          throw new Error(errorMessage);
         }
-
-        responseData = await fallbackResponse.json();
       }
 
+      console.log('Fetched issues with locations:', responseData.issues);
       setIssues(responseData.issues || []);
 
       if (responseData.issues?.length === 0) {

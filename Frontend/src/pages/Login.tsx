@@ -157,6 +157,7 @@ const Login = () => {
               textColor="white"
               buttonStyle={2}
               className="w-full py-2 text-xl"
+              noHoverScale={true}
             />
 
             <p className="text-center text-sm mt-4">
