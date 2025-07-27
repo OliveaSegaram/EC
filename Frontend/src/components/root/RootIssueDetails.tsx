@@ -119,7 +119,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
             {/* DC/AC's Rejection Reason */}
             {selectedIssue.status === ISSUE_STATUS.DC_REJECTED && (
               <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded-r">
-                <h4 className="text-sm font-medium text-red-800 mb-2">{t('DC/AC Rejection Reason')}</h4>
+                <h4 className="text-sm font-medium text-red-800 mb-2">{t('Verifying Officer Rejection Reason')}</h4>
                 <div className="bg-white p-3 rounded border border-red-100">
                   <p className="text-sm text-gray-700 whitespace-pre-line">
                     {selectedIssue.comment || t('No Reason Provided')}
@@ -190,7 +190,9 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                     <p className="text-xs font-medium text-gray-500">{t('location')}</p>
                     <p className="font-medium flex items-center">
                       <FiMapPin className="mr-1 text-purple-600" />
-                      {selectedIssue.location}
+                      {selectedIssue.location?.includes('Colombo Head Office') && selectedIssue.branch 
+                        ? `Colombo Head Office - ${selectedIssue.branch}`
+                        : selectedIssue.location || t('locationNotSpecified')}
                     </p>
                   </div>
                 </div>
@@ -247,8 +249,8 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                         </div>
                       </div>
                       <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-900">{t('approvedByDC/AC')}</p>
-                        <p className="text-xs text-gray-500">{t('waitingForFinalApproval')}</p>
+                        <p className="text-sm font-medium text-gray-900">{t('Approved By Verifying Officer')}</p>
+                        <p className="text-xs text-gray-500">{t('Waiting For Final Approval')}</p>
                       </div>
                     </div>
                   )}
@@ -262,7 +264,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
                       </div>
                       <div className="ml-3">
                         <p className="text-sm font-medium text-gray-900">{t('rejected')}</p>
-                        <p className="text-xs text-gray-500">{t('issueHasBeenRejected')}</p>
+                        <p className="text-xs text-gray-500">{t('Issue Has Been Rejected')}</p>
                       </div>
                     </div>
                   )}
@@ -311,7 +313,7 @@ const RootIssueDetails: React.FC<RootIssueDetailsProps> = ({
               {/* Show message for rejected issues */}
               {selectedIssue.status === ISSUE_STATUS.DC_REJECTED && (
                 <div className="bg-yellow-50 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-yellow-800">{t('issueRejectedBy DC/AC')}</h3>
+                  <h3 className="text-sm font-medium text-yellow-800">{t('IssueRejectedBy Verifying Officer')}</h3>
                   <p className="mt-1 text-sm text-yellow-700">
                     {selectedIssue.comment || t('noReasonForRejection')}
                   </p>

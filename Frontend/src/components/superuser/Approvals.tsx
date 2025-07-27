@@ -31,6 +31,7 @@ interface Issue {
   comment?: string;  
   attachment?: string | null;
   districtId?: number;
+  branch?: string;
   district?: {
     id: number;
     name: string;
@@ -40,6 +41,7 @@ interface Issue {
     username: string;
     email: string;
     districtId?: number;
+    branch?: string;
     district?: {
       id: number;
       name: string;
@@ -50,6 +52,7 @@ interface Issue {
     username: string;
     email: string;
     districtId?: number;
+    branch?: string;
     district?: {
       id: number;
       name: string;
@@ -363,7 +366,9 @@ const Approvals = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {issue.district?.name || issue.user.district?.name || issue.location || 'N/A'}
+                    {issue.location?.includes('Colombo Head Office') && issue.branch 
+                      ? `Colombo Head Office - ${issue.branch}`
+                      : issue.district?.name || issue.user?.district?.name || issue.location || 'N/A'}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

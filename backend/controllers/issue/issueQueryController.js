@@ -72,12 +72,35 @@ exports.getAllIssues = async (req, res) => {
     // Process the issues to include the district name and ensure comment is included
     const processedIssues = issues.map(issue => {
       const issueJson = issue.toJSON();
-      // If we have district info, use the district name, otherwise use the location as is
-      issueJson.location = issueJson.districtInfo ? issueJson.districtInfo.name : issueJson.location;
+      
+      // If location is already formatted (from issue creation), use it
+      if (issueJson.location && issueJson.location.includes('Colombo Head Office - ')) {
+        // Location is already formatted with branch, keep it as is
+        console.log(`Using pre-formatted location: ${issueJson.location}`);
+      }
+      // Otherwise, format the location based on district and branch
+      else {
+        // Handle location - prefer district name if available, otherwise use the location field
+        issueJson.location = issueJson.district ? 
+          issueJson.district.name : 
+          (issueJson.location || 'Location not specified');
+        
+        // If this is a Colombo Head Office issue, format with branch
+        if (issueJson.location === 'Colombo Head Office') {
+          const branch = issueJson.branch || issueJson.user?.branch || 'Main Branch';
+          issueJson.location = `Colombo Head Office - ${branch}`;
+          console.log(`Formatted location with branch: ${issueJson.location}`);
+        }
+      }
+      
       // Ensure comment is included (might be null/undefined)
       issueJson.comment = issueJson.comment || '';
-      // Remove the nested objects
-      delete issueJson.districtInfo;
+      
+      // Keep the district object for reference but don't send nested user data
+      if (issueJson.user) {
+        delete issueJson.user.district;
+      }
+      
       return issueJson;
     });
     
@@ -103,12 +126,12 @@ exports.getIssueDetails = async (req, res) => {
         {
           model: User,
           as: 'assignedTechnicalOfficer',
-          attributes: ['id', 'username', 'email']
+          attributes: ['id', 'username', 'email', 'branch']
         },
         {
           model: User,
           as: 'submitter',
-          attributes: ['id', 'username', 'email']
+          attributes: ['id', 'username', 'email', 'branch']
         },
         {
           model: District,
@@ -121,8 +144,28 @@ exports.getIssueDetails = async (req, res) => {
     if (!issue) {
       return res.status(404).json({ message: 'Issue not found' });
     }
+    
+    const issueJson = issue.toJSON();
+    
+    // Handle location - prefer district name if available, otherwise use the location field
+    issueJson.location = issueJson.districtInfo ? issueJson.districtInfo.name : (issueJson.location || 'Location not specified');
+    
+    // If this is a Colombo Head Office issue, format the location with branch
+    if (issueJson.location === 'Colombo Head Office') {
+      const branch = issueJson.branch || issueJson.user?.branch || 'Main Branch';
+      issueJson.location = `Colombo Head Office - ${branch}`;
+    }
+    
+    // Ensure comment is included (might be null/undefined)
+    issueJson.comment = issueJson.comment || '';
+    
+    // Clean up the response
+    delete issueJson.districtInfo;
+    if (issueJson.user) {
+      delete issueJson.user.district;
+    }
 
-    res.status(200).json({ issue });
+    res.status(200).json({ issue: issueJson });
   } catch (error) {
     console.error('Error fetching issue details:', error);
     return res.status(500).json({ message: 'Error fetching issue details', error: error.message });

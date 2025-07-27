@@ -210,7 +210,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                     <p className="text-xs font-medium text-gray-500">{t('location')}</p>
                     <p className="font-medium flex items-center">
                       <IconMapper iconName="Home" iconSize={16} className="mr-1 text-purple-600" />
-                      {selectedIssue.location}
+                      {selectedIssue.location || t('locationNotSpecified', 'Location not specified')}
                     </p>
                   </div>
                 </div>

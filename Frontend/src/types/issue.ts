@@ -12,4 +12,20 @@ export type Issue = {
   comment?: string;
   dcRejectionReason?: string;
   approvalComment?: string;
+  branch?: string;
+  district?: {
+    id: number;
+    name: string;
+  } | null;
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+    districtId?: number;
+    branch?: string;
+    district?: {
+      id: number;
+      name: string;
+    } | null;
+  };
 }

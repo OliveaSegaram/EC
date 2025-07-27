@@ -22,9 +22,10 @@ exports.submitIssue = async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Get the user's district ID from their profile
+    // Get the user's district and branch from their profile
     const userId = req.user.userId;
     let districtId = null;
+    let userBranch = null;
     let issueLocation = 'Not specified';
     let isHeadOffice = false;
     
@@ -32,42 +33,42 @@ exports.submitIssue = async (req, res) => {
       console.log('Looking up user with ID:', userId);
       
       try {
-        // First get the user with districtId
+        // First get the user with district and branch info
         const user = await User.findByPk(userId, {
-          attributes: ['id', 'districtId']
+          include: [{
+            model: District,
+            as: 'district',
+            attributes: ['id', 'name']
+          }],
+          attributes: ['id', 'districtId', 'branch']
         });
         
-        if (user && user.districtId) {
+        if (user) {
           districtId = user.districtId;
+          userBranch = user.branch || 'Main Branch';
           
-          // If we need to show the district name in logs, we can fetch it
-          const district = await District.findByPk(districtId);
-          
-          if (district) {
-            isHeadOffice = district.name === 'Colombo Head Office';
+          if (user.district) {
+            isHeadOffice = user.district.name === 'Colombo Head Office';
             
-            // If the user is from Colombo Head Office and branch is provided, format the location
-            if (isHeadOffice && req.body.branch) {
-              issueLocation = `Colombo Head Office - ${req.body.branch}`;
+            if (isHeadOffice) {
+              // For Colombo Head Office, include the branch in the location
+              issueLocation = `Colombo Head Office - ${userBranch}`;
+              console.log(`Using Colombo Head Office location with branch: ${userBranch}`);
             } else {
-              // Store just the district ID in the location field
-              issueLocation = districtId.toString();
+              // For other districts, just use the district name
+              issueLocation = user.district.name;
+              console.log(`Using district location: ${user.district.name}`);
             }
-            console.log(`Using district ID: ${districtId} (${district.name}) for issue location`);
           } else {
-            console.log(`District not found for ID: ${districtId}`);
-            // Still store the district ID even if we couldn't find the district details
-            issueLocation = districtId.toString();
+            console.log(`District not found for user ${userId}, using district ID`);
+            issueLocation = districtId ? districtId.toString() : 'Unknown Location';
           }
         } else {
-          console.log(`User or district ID not found for user ID ${userId}, using default location`);
+          console.log(`User not found with ID: ${userId}`);
         }
       } catch (error) {
         console.error('Error fetching user district:', error);
-        // If there was an error but we have a districtId, still use it
-        if (districtId) {
-          issueLocation = districtId.toString();
-        }
+        issueLocation = districtId ? districtId.toString() : 'Unknown Location';
       }
     }
 
@@ -80,19 +81,23 @@ exports.submitIssue = async (req, res) => {
       attachmentPath = `uploads/${filename}`;
     }
 
+    // Prepare issue data with branch information for Colombo Head Office
     const issueData = {
       deviceId,
       complaintType,
       description,
       priorityLevel,
-      districtId: issueLocation ? parseInt(issueLocation, 10) : null,
-      branch: isHeadOffice ? req.body.branch : null, // Save branch for Colombo Head Office
+      districtId: districtId,
+      branch: isHeadOffice ? userBranch : null, // Save branch for Colombo Head Office
       underWarranty: underWarranty === 'true',
       status: PENDING,
       submittedAt: new Date(),
       attachment: attachmentPath,
-      userId: userId
+      userId: userId,
+      location: issueLocation // Store the formatted location string
     };
+    
+    console.log('Creating issue with data:', JSON.stringify(issueData, null, 2));
 
     console.log('Creating issue with data:', issueData);
     const issue = await Issue.create(issueData);
