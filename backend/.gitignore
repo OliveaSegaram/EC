@@ -11,6 +11,7 @@ package-lock.json
 # Build output
 dist/
 build/
+uploads/
 
 # OS or editor-specific files
 .DS_Store
