@@ -12,6 +12,7 @@ import SimplePagination from '../common/SimplePagination';
 interface District {
   id?: string | number;
   name: string;
+  districtName?: string; // Added to match the API response structure
 }
 
 interface Issue {
@@ -21,6 +22,7 @@ interface Issue {
   description: string;
   priorityLevel: string;
   location: string | District | null;
+  branch?: string; // Add branch information
   status: string;
   submittedAt: string;
   comment?: string;
@@ -62,22 +64,26 @@ const AssignedTasks = () => {
 
   // Removed fetchDistricts as we're now getting location directly from the issue
 
-  const getDistrictName = (location: string | District | null) => {
-    console.log('getDistrictName called with location:', location);
+  const getDistrictName = (location: string | District | null, branch?: string): string => {
+    console.log('getDistrictName called with location:', location, 'branch:', branch);
     
-    // If location is already a string (district name), return it
+    let locationName = 'N/A';
+    
+    // Handle different location formats
     if (typeof location === 'string' && location.trim() !== '') {
-      return location;
+      locationName = location;
+    } else if (location && typeof location === 'object') {
+      const district = location as District;
+      locationName = district.name || district.districtName || 'N/A';
     }
     
-    // If location is an object with name property, return the name
-    if (location && typeof location === 'object' && 'name' in location && location.name) {
-      return location.name;
+    // Special handling for Colombo Head Office with branch information
+    if ((locationName === 'Colombo Head Office' || locationName === 'Head Office' || locationName === 'Colombo') && branch) {
+      return `Colombo Head Office - ${branch}`;
     }
     
-    // Fallback to 'N/A' if no valid location is found
-    console.log('No valid location found, returning N/A');
-    return 'N/A';
+    // For other locations, just return the location name
+    return locationName;
   };
 
   // Update filtered issues when issues or activeFilter changes
@@ -165,9 +171,9 @@ const AssignedTasks = () => {
 
       let responseData;
 
-      // First try to get all assigned issues including resolved ones with district info
+      // First try to get all assigned issues including resolved ones with district and branch info
       try {
-        const response = await axios.get(`${backendUrl}/issues/assigned?include=district`, {
+        const response = await axios.get(`${backendUrl}/issues/assigned?include=district,branch`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Cache-Control': 'no-cache',
@@ -177,9 +183,9 @@ const AssignedTasks = () => {
         responseData = response.data;
       } catch (error) {
         console.log('Primary endpoint failed, trying fallback...', error);
-        // Fall back to the original endpoint with district info
+        // Fall back to the original endpoint with district and branch info
         try {
-          const fallbackResponse = await axios.get(`${backendUrl}/assignments/my-issues?include=district`, {
+          const fallbackResponse = await axios.get(`${backendUrl}/assignments/my-issues?include=district,branch`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Cache-Control': 'no-cache',
@@ -193,8 +199,26 @@ const AssignedTasks = () => {
         }
       }
 
-      console.log('Fetched issues with locations:', responseData.issues);
-      setIssues(responseData.issues || []);
+      // Process the issues to ensure consistent location format
+      const processedIssues = (responseData.issues || []).map((issue: any) => {
+        // If location is missing but district is present, use district as location
+        const location = issue.location || (issue.district ? issue.district.name : 'N/A');
+        
+        // For Colombo Head Office, include branch information if available
+        let displayLocation = location;
+        if ((location === 'Colombo Head Office' || location === 'Head Office' || location === 'Colombo') && issue.branch) {
+          displayLocation = `Colombo Head Office - ${issue.branch}`;
+        }
+        
+        return {
+          ...issue,
+          location: displayLocation,
+          branch: issue.branch || ''
+        };
+      });
+
+      console.log('Processed issues with locations:', processedIssues);
+      setIssues(processedIssues);
 
       if (responseData.issues?.length === 0) {
         toast.info(t('noTasksAssigned'));
@@ -340,8 +364,10 @@ const AssignedTasks = () => {
         hour12: true
       });
       
-      // Remove the timestamp from the content
-      const content = text.replace(timestampRegex, '').trim();
+      // Remove any ' at ' before the timestamp and the timestamp itself
+      const content = text
+        .replace(new RegExp(`\\s*\\bat\\b\\s*${timestampRegex.source}`), '')
+        .trim();
       
       return { timestamp: formattedTimestamp, content };
     } catch (e) {
@@ -487,7 +513,6 @@ const AssignedTasks = () => {
               <tr>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('issueId')}</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('type')}</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('description')}</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('priority')}</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('status')}</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">{t('location')}</th>
@@ -499,7 +524,6 @@ const AssignedTasks = () => {
                 <tr key={issue.id}>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">#{issue.id}</td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{issue.complaintType}</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{issue.description}</td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       issue.priorityLevel === 'High' ? 'bg-red-100 text-red-800' :
@@ -513,7 +537,7 @@ const AssignedTasks = () => {
                     <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(issue.status)}`}>{issue.status}</span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {getDistrictName(issue.location)}
+                    {getDistrictName(issue.location, issue.branch)}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm">
                     <button

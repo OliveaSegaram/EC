@@ -82,31 +82,33 @@ const Approvals = () => {
   const { backendUrl } = useContext(AppContext);
   const { t } = useTranslation();
   
-  const filteredIssues = issues.filter(issue => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = (
-      issue.deviceId?.toLowerCase().includes(searchLower) ||
-      issue.complaintType?.toLowerCase().includes(searchLower) ||
-      issue.description?.toLowerCase().includes(searchLower) ||
-      issue.user?.username?.toLowerCase().includes(searchLower) ||
-      issue.id.toString().includes(searchLower)
-    );
-
-    // Apply status filter
-    if (statusFilter === 'pending') {
-      return matchesSearch && issue.status === 'Pending';
-    } else if (statusFilter === 'assigned') {
-      return matchesSearch && (
-        issue.status === 'Assigned to Technician' || 
-        issue.status === 'In Progress' ||
-        issue.status === 'Issue approved by Super Admin' || 
-        issue.status === 'DC Approved'
+  const filteredIssues = React.useMemo(() => {
+    return issues.filter(issue => {
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = (
+        issue.deviceId?.toLowerCase().includes(searchLower) ||
+        issue.complaintType?.toLowerCase().includes(searchLower) ||
+        issue.description?.toLowerCase().includes(searchLower) ||
+        issue.user?.username?.toLowerCase().includes(searchLower) ||
+        issue.id.toString().includes(searchLower)
       );
-    } else if (statusFilter === 'under_procurement') {
-      return matchesSearch && issue.status === 'Under Procurement';
-    }
-    return matchesSearch;
-  });
+
+      // Apply status filter
+      if (statusFilter === 'pending') {
+        return matchesSearch && issue.status === 'Pending';
+      } else if (statusFilter === 'assigned') {
+        return matchesSearch && (
+          issue.status === 'Assigned to Technician' || 
+          issue.status === 'In Progress' ||
+          issue.status === 'Issue approved by Super Admin' || 
+          issue.status === 'DC Approved'
+        );
+      } else if (statusFilter === 'under_procurement') {
+        return matchesSearch && (issue.status === 'Under Procurement' || issue.status === 'Add_To_Procurement');
+      }
+      return matchesSearch;
+    });
+  }, [issues, searchQuery, statusFilter]);
   
   // Pagination
   const itemsPerPage = 5;
