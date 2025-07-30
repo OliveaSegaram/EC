@@ -21,6 +21,7 @@ interface ReviewIssue {
   status: string;
   priorityLevel: string;
   location: string;
+  branch?: string;
   comment: string;
   attachment: string | null;
   details: string;
@@ -336,6 +337,7 @@ const ReviewPanel: React.FC = () => {
             <tr>
               <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">{t('issueId')}</th>
               <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">{t('type')}</th>
+              <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">{t('location')}</th>
               <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">{t('status')}</th>
               <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">{t('lastUpdated')}</th>
               <th className="px-6 py-3.5 text-center text-xs font-semibold text-white uppercase tracking-wider">{t('action')}</th>
@@ -353,6 +355,15 @@ const ReviewPanel: React.FC = () => {
                 <tr key={issue.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{issue.id}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.complaintType || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <IconMapper iconName="MapPin" iconSize={16} className="mr-1.5 text-gray-400" />
+                      {issue.location}
+                      {issue.location === 'Colombo Head Office' && issue.branch && (
+                        <span className="ml-1 text-xs text-gray-500">({issue.branch})</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(issue.status)}
                   </td>
@@ -421,6 +432,16 @@ const ReviewPanel: React.FC = () => {
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">{t('deviceId')}</h4>
                   <p className="mt-1 text-gray-900 font-medium">{selectedIssue.deviceId}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">{t('location')}</h4>
+                  <p className="mt-1 text-gray-900 flex items-center">
+                    <IconMapper iconName="MapPin" iconSize={16} className="mr-2" />
+                    {selectedIssue.location}
+                    {selectedIssue.location === 'Colombo Head Office' && selectedIssue.branch && (
+                      <span className="ml-1 text-sm text-gray-600">({selectedIssue.branch} Branch)</span>
+                    )}
+                  </p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">{t('issueType')}</h4>

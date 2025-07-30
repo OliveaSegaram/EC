@@ -347,8 +347,8 @@ const IssuePanel: FC = (): ReactElement => {
     const allStatusOptions = [
       { value: 'all', label: t('allIssues') },
       { value: ISSUE_STATUS.PENDING, label: t('pending') },
-      { value: ISSUE_STATUS.DC_APPROVED, label: t('DC/AC Approved') },
-      { value: ISSUE_STATUS.DC_REJECTED, label: t('DC/AC Rejected') },
+      { value: ISSUE_STATUS.DC_APPROVED, label: t('Approved By verifying Officer') },
+      { value: ISSUE_STATUS.DC_REJECTED, label: t('Rejected By verifying Officer') },
       { value: ISSUE_STATUS.SUPER_ADMIN_APPROVED, label: t('approvedByAdmin') },
       { value: ISSUE_STATUS.SUPER_ADMIN_REJECTED, label: t('rejectedByAdmin') },
       { value: ISSUE_STATUS.UNDER_PROCUREMENT, label: t('underProcurement') },
